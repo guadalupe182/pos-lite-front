@@ -1,7 +1,7 @@
 // lib/api.ts
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-export async function apiFetch(endpoint: string, options?: RequestInit) {
+export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
   const url = `${API_BASE}${endpoint}`;
   const response = await fetch(url, {
     ...options,
@@ -12,18 +12,20 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
     },
   });
 
-  if (response.status === 401) {
-    // Token inválido o expirado → redirigir al login
-    // Opcional: eliminar la cookie manualmente (no es necesario, el backend la invalidará)
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
-    }
-    throw new Error('Sesión expirada');
-  }
-
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || `HTTP ${response.status}`);
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } else {
+        errorMessage = await response.text();
+      }
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
   }
   return response;
 }

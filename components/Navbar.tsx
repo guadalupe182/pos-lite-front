@@ -2,25 +2,24 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
 
   const handleLogout = async () => {
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' });
-      router.push('/');
+      window.location.href = '/login';
     } catch (err) {
       console.error('Error al cerrar sesión', err);
-      router.push('/');
+      window.location.href = '/login';
     }
   };
 
   const navLinks = [
+    { href: '/', label: 'Dashboard' },
     { href: '/products', label: 'Productos' },
     { href: '/inventory', label: 'Inventario' },
     { href: '/sales', label: 'Vender' },
@@ -32,12 +31,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/products" className="text-xl font-bold">
+            <Link href="/" className="text-xl font-bold">
               POS-lite
             </Link>
           </div>
 
-          {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             {navLinks.map((link) => (
               <Link
@@ -56,7 +54,6 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -68,7 +65,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu panel */}
       {isOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">

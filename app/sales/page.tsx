@@ -167,7 +167,7 @@ export default function SalesPage() {
     );
   };
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
   if (cart.length === 0) {
     setMessage({ type: 'error', text: 'Agrega al menos un producto' });
     return;
@@ -190,19 +190,11 @@ export default function SalesPage() {
     if (res.ok) {
       setMessage({ type: 'success', text: 'Venta registrada correctamente' });
       setCart([]);
-    } else {
-      // Intenta obtener el mensaje de error del backend
-      let errorText = 'Error al registrar venta';
-      try {
-        const errorData = await res.json();
-        errorText = errorData.error || errorData.message || errorText;
-      } catch {
-        errorText = await res.text();
-      }
-      setMessage({ type: 'error', text: errorText });
     }
-  } catch {
-    setMessage({ type: 'error', text: 'Error de conexión con el servidor' });
+  } catch (error) {
+    console.error('Error en venta:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error de conexión con el servidor';
+    setMessage({ type: 'error', text: errorMessage });
   } finally {
     setLoading(false);
   }
