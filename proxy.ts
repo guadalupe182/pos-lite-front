@@ -11,25 +11,28 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // === Redirecciones basadas en autenticación ===
-  if (!token && pathname !== '/') {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  if (token && pathname === '/') {
-    return NextResponse.redirect(new URL('/products', request.url));
-  }
-
-  // === Verificación opcional del token (si existe y no es API) ===
-  if (token && pathname !== '/') {
-    try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      await jwtVerify(token, secret);
-    } catch (error) {
-      const response = NextResponse.redirect(new URL('/', request.url));
-      response.cookies.delete('access_token');
-      return response;
+  // === Ruta pública de login ===
+  if (pathname === '/login') {
+    if (token) {
+      // Si ya tiene token, redirigir al dashboard
+      return NextResponse.redirect(new URL('/', request.url));
     }
+    return NextResponse.next();
+  }
+
+  // === Rutas protegidas (dashboard y resto) ===
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // === Verificar validez del token ===
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    await jwtVerify(token, secret);
+  } catch  {
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.delete('access_token');
+    return response;
   }
 
   return NextResponse.next();
