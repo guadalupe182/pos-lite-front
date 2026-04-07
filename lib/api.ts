@@ -1,8 +1,8 @@
 // lib/api.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com';
 
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${API_BASE}${endpoint}`;   // endpoint debe empezar con /api/...
   const response = await fetch(url, {
     ...options,
     credentials: 'include',

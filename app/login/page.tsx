@@ -15,16 +15,19 @@ export default function LoginPage() {
     setError('');
 
     try {
+      //  CORRECTO: endpoint completo /api/auth/login
       const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+
       if (res.ok) {
-        router.push('/');
+        router.push('/'); // Redirige al dashboard o página principal
       } else {
         setError('Credenciales inválidas');
       }
-    } catch {
+    } catch (err) {
+      console.error('Error en login:', err);
       setError('Error de conexión con el servidor');
     }
   };
