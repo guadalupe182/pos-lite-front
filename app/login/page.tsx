@@ -1,28 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Derivar el mensaje de éxito directamente desde la URL
+  const successMsg = searchParams?.get('registered') === 'true'
+    ? 'Usuario registrado correctamente. Ahora inicia sesión.'
+    : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     try {
-      //  CORRECTO: endpoint completo /api/auth/login
       const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
 
       if (res.ok) {
-        router.push('/'); // Redirige al dashboard o página principal
+        router.push('/');
       } else {
         setError('Credenciales inválidas');
       }
@@ -37,6 +43,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96">
         <h1 className="text-2xl font-bold mb-6 text-gray-800">POS-lite</h1>
         {error && <p className="text-red-600 mb-4">{error}</p>}
+        {successMsg && <p className="text-green-600 mb-4">{successMsg}</p>}
         <input
           type="email"
           placeholder="Email"
@@ -59,6 +66,12 @@ export default function LoginPage() {
         >
           Ingresar
         </button>
+        <p className="mt-4 text-center text-sm text-gray-600">
+          ¿No tienes una cuenta?{' '}
+          <Link href="/register" className="text-blue-600 hover:underline">
+            Regístrate aquí
+          </Link>
+        </p>
       </form>
     </div>
   );

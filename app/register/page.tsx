@@ -23,7 +23,7 @@ export default function RegisterPage() {
       });
       if (res.ok) {
         setSuccess('Usuario registrado. Ya puedes iniciar sesión.');
-        setTimeout(() => router.push('/login'), 2000);
+        setTimeout(() => router.push('/login?registered=true'), 2000);
       } else {
         const errorData = await res.json();
         setError(errorData.error || 'Error al registrar');
