@@ -19,6 +19,7 @@ export default function Navbar() {
   };
 
   const navLinks = [
+    {href: '/register', label: 'Registro'},
     { href: '/', label: 'Dashboard' },
     { href: '/products', label: 'Productos' },
     { href: '/inventory', label: 'Inventario' },
