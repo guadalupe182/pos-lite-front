@@ -1,5 +1,5 @@
 // lib/api.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com';    //apunta a produccion
 
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
   const url = `${API_BASE}${endpoint}`;   // endpoint debe empezar con /api/...

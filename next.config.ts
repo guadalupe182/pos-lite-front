@@ -1,15 +1,19 @@
-import type { NextConfig } from 'next';
-import withPWA from '@ducanh2912/next-pwa';
+import type { NextConfig } from "next";
+import withPWA from "@ducanh2912/next-pwa";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['*'],
+  allowedDevOrigins: ["*"],
+  turbopack: {},
 };
 
-export default withPWA({
-  dest: 'public',
-  register: true,
-  workboxOptions: {
-    skipWaiting: true,
-    clientsClaim: true,
-  },
-})(nextConfig);
+const isProd = process.env.NODE_ENV === "production";
+
+export default isProd
+  ? withPWA({
+      dest: "public",
+      register: true,
+      workboxOptions: {
+      skipWaiting: true,
+      }
+    })(nextConfig)
+  : nextConfig;
