@@ -44,56 +44,106 @@ export default function SalesPage() {
   };
 
   const createProductAndAddToCart = async (barcode: string) => {
-    const name = prompt('Producto no encontrado. Ingrese el nombre:');
-    if (!name) return false;
-    const priceStr = prompt('Ingrese el precio:');
-    const price = parseFloat(priceStr || '0');
-    if (isNaN(price) || price <= 0) {
-      alert('Precio inválido');
-      return false;
-    }
-    const categoryName = prompt('Categoría (opcional, presione Enter para omitir):', 'General');
-    const payload: ProductPayload = {
-      barcode,
-      delta: 1,
-      reason: 'INBOUND',
-      name,
-      price,
-      minStock: 0,
-    };
-    if (categoryName && categoryName.trim()) {
-      payload.categoryName = categoryName.trim();
-    }
-    try {
-      const res = await apiFetch('/api/products/adjust-by-barcode', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const product = await res.json();
-        setCart((prev) => [
-          ...prev,
-          {
-            productId: product.id,
-            barcode: product.barcode,
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-            subtotal: product.price,
-          },
-        ]);
-        setMessage({ type: 'success', text: 'Producto creado y agregado al carrito' });
-        return true;
-      } else {
-        const error = await res.text();
-        setMessage({ type: 'error', text: `Error al crear producto: ${error}` });
-        return false;
+  const name = prompt('Producto no encontrado. Ingrese el nombre:');
+  if (!name) return false;
+  
+  const priceStr = prompt('Ingrese el precio:');
+  const price = parseFloat(priceStr || '0');
+  if (isNaN(price) || price <= 0) {
+    alert('Precio inválido');
+    return false;
+  }
+
+  // Obtener categorías existentes
+  let categories: { id: number; name: string }[] = [];
+  let categoryId = 1; // valor por defecto (Electrónicos)
+  
+  try {
+    const res = await apiFetch('/api/categories');
+    categories = await res.json();
+    
+    if (categories && categories.length > 0) {
+      // Mostrar lista numerada de categorías existentes
+      const categoryList = categories.map((c, idx) => `${idx + 1}. ${c.name}`).join('\n');
+      const selected = prompt(
+        `Seleccione una categoría (ingrese el número):\n${categoryList}\n\n` +
+        `0. Crear nueva categoría\n\nPor defecto: 1`,
+        "1"
+      );
+      
+      const num = parseInt(selected || "1", 10);
+      
+      if (num === 0) {
+        // Crear nueva categoría
+        const newCategoryName = prompt('Ingrese el nombre de la nueva categoría:');
+        if (newCategoryName && newCategoryName.trim()) {
+          try {
+            const createRes = await apiFetch('/api/categories', {
+              method: 'POST',
+              body: JSON.stringify({ name: newCategoryName.trim() }),
+            });
+            if (createRes.ok) {
+              const newCategory = await createRes.json();
+              categoryId = newCategory.id;
+            } else {
+              alert('Error al crear categoría, se usará la categoría por defecto');
+            }
+          } catch {
+            alert('Error al crear categoría, se usará la categoría por defecto');
+          }
+        }
+      } else if (num >= 1 && num <= categories.length) {
+        categoryId = categories[num - 1].id;
       }
-    } catch {
-      setMessage({ type: 'error', text: 'Error de conexión al crear producto' });
+    }
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+  }
+
+  // minStock opcional
+  const minStockStr = prompt('Stock mínimo (opcional, presione Enter para 0):', "0");
+  const minStock = parseInt(minStockStr || "0", 10) || 0;
+
+  const payload = {
+    barcode,
+    delta: 1,
+    reason: 'INBOUND',
+    name,
+    price,
+    minStock,
+    categoryId,
+  };
+
+  try {
+    const res = await apiFetch('/api/products/adjust-by-barcode', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const product = await res.json();
+      setCart((prev) => [
+        ...prev,
+        {
+          productId: product.id,
+          barcode: product.barcode,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          subtotal: product.price,
+        },
+      ]);
+      setMessage({ type: 'success', text: 'Producto creado y agregado al carrito' });
+      return true;
+    } else {
+      const error = await res.text();
+      setMessage({ type: 'error', text: `Error al crear producto: ${error}` });
       return false;
     }
-  };
+  } catch {
+    setMessage({ type: 'error', text: 'Error de conexión al crear producto' });
+    return false;
+  }
+};
 
   const addToCart = useCallback(async (code: string) => {
     if (!code.trim()) return;
