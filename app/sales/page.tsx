@@ -14,14 +14,9 @@ type CartItem = {
   subtotal: number;
 };
 
-type ProductPayload = {
-  barcode: string;
-  delta: number;
-  reason: string;
+type Category = {
+  id: number;
   name: string;
-  price: number;
-  minStock: number;
-  categoryName?: string;
 };
 
 export default function SalesPage() {
@@ -44,106 +39,107 @@ export default function SalesPage() {
   };
 
   const createProductAndAddToCart = async (barcode: string) => {
-  const name = prompt('Producto no encontrado. Ingrese el nombre:');
-  if (!name) return false;
-  
-  const priceStr = prompt('Ingrese el precio:');
-  const price = parseFloat(priceStr || '0');
-  if (isNaN(price) || price <= 0) {
-    alert('Precio inválido');
-    return false;
-  }
-
-  // Obtener categorías existentes
-  let categories: { id: number; name: string }[] = [];
-  let categoryId = 1; // valor por defecto (Electrónicos)
-  
-  try {
-    const res = await apiFetch('/api/categories');
-    categories = await res.json();
+    const name = prompt('Producto no encontrado. Ingrese el nombre:');
+    if (!name) return false;
     
-    if (categories && categories.length > 0) {
-      // Mostrar lista numerada de categorías existentes
-      const categoryList = categories.map((c, idx) => `${idx + 1}. ${c.name}`).join('\n');
-      const selected = prompt(
-        `Seleccione una categoría (ingrese el número):\n${categoryList}\n\n` +
-        `0. Crear nueva categoría\n\nPor defecto: 1`,
-        "1"
-      );
-      
-      const num = parseInt(selected || "1", 10);
-      
-      if (num === 0) {
-        // Crear nueva categoría
-        const newCategoryName = prompt('Ingrese el nombre de la nueva categoría:');
-        if (newCategoryName && newCategoryName.trim()) {
-          try {
-            const createRes = await apiFetch('/api/categories', {
-              method: 'POST',
-              body: JSON.stringify({ name: newCategoryName.trim() }),
-            });
-            if (createRes.ok) {
-              const newCategory = await createRes.json();
-              categoryId = newCategory.id;
-            } else {
-              alert('Error al crear categoría, se usará la categoría por defecto');
-            }
-          } catch {
-            alert('Error al crear categoría, se usará la categoría por defecto');
-          }
-        }
-      } else if (num >= 1 && num <= categories.length) {
-        categoryId = categories[num - 1].id;
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-  }
-
-  // minStock opcional
-  const minStockStr = prompt('Stock mínimo (opcional, presione Enter para 0):', "0");
-  const minStock = parseInt(minStockStr || "0", 10) || 0;
-
-  const payload = {
-    barcode,
-    delta: 1,
-    reason: 'INBOUND',
-    name,
-    price,
-    minStock,
-    categoryId,
-  };
-
-  try {
-    const res = await apiFetch('/api/products/adjust-by-barcode', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      const product = await res.json();
-      setCart((prev) => [
-        ...prev,
-        {
-          productId: product.id,
-          barcode: product.barcode,
-          name: product.name,
-          price: product.price,
-          quantity: 1,
-          subtotal: product.price,
-        },
-      ]);
-      setMessage({ type: 'success', text: 'Producto creado y agregado al carrito' });
-      return true;
-    } else {
-      const error = await res.text();
-      setMessage({ type: 'error', text: `Error al crear producto: ${error}` });
+    const priceStr = prompt('Ingrese el precio:');
+    const price = parseFloat(priceStr || '0');
+    if (isNaN(price) || price <= 0) {
+      alert('Precio inválido');
       return false;
     }
-  } catch {
-    setMessage({ type: 'error', text: 'Error de conexión al crear producto' });
-    return false;
-  }
-};
+
+    // Obtener categorías existentes
+    let categories: Category[] = [];
+    let categoryId = 1;
+    
+    try {
+      const res = await apiFetch('/api/categories');
+      categories = await res.json();
+      
+      if (categories && categories.length > 0) {
+        const categoryList = categories.map((c, idx) => `${idx + 1}. ${c.name}`).join('\n');
+        const selected = prompt(
+          `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
+          "1"
+        );
+        
+        const num = parseInt(selected || "1", 10);
+        
+        if (num === 0) {
+          const newCategoryName = prompt('Ingrese el nombre de la nueva categoría:');
+          if (newCategoryName && newCategoryName.trim()) {
+            try {
+              const createRes = await apiFetch('/api/categories', {
+                method: 'POST',
+                body: JSON.stringify({ name: newCategoryName.trim() }),
+              });
+              if (createRes.ok) {
+                const newCategory = await createRes.json();
+                categoryId = newCategory.id;
+              } else {
+                alert('Error al crear categoría, se usará la categoría por defecto');
+              }
+            } catch {
+              alert('Error al crear categoría, se usará la categoría por defecto');
+            }
+          }
+        } else if (num >= 1 && num <= categories.length) {
+          categoryId = categories[num - 1].id;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+
+    // Stock mínimo
+    const minStockStr = prompt('Stock mínimo (opcional, presione Enter para 0):', "0");
+    const minStock = parseInt(minStockStr || "0", 10) || 0;
+
+    // 🆕 Cantidad inicial a agregar al carrito
+    const quantityStr = prompt('¿Cuántas unidades deseas agregar al carrito?', "1");
+    const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
+
+    const payload = {
+      barcode,
+      delta: initialQuantity, // 🔥 Se usa como stock inicial
+      reason: 'INBOUND',
+      name,
+      price,
+      minStock,
+      categoryId,
+    };
+
+    try {
+      const res = await apiFetch('/api/products/adjust-by-barcode', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const product = await res.json();
+        setCart((prev) => [
+          ...prev,
+          {
+            productId: product.id,
+            barcode: product.barcode,
+            name: product.name,
+            price: product.price,
+            quantity: initialQuantity,
+            subtotal: product.price * initialQuantity,
+          },
+        ]);
+        setMessage({ type: 'success', text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))` });
+        return true;
+      } else {
+        const error = await res.text();
+        setMessage({ type: 'error', text: `Error al crear producto: ${error}` });
+        return false;
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Error de conexión al crear producto' });
+      return false;
+    }
+  };
 
   const addToCart = useCallback(async (code: string) => {
     if (!code.trim()) return;
@@ -217,38 +213,41 @@ export default function SalesPage() {
     );
   };
 
- const handleSubmit = async () => {
-  if (cart.length === 0) {
-    setMessage({ type: 'error', text: 'Agrega al menos un producto' });
-    return;
-  }
-
-  const payload = {
-    items: cart.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-    })),
-  };
-
-  setLoading(true);
-  setMessage(null);
-  try {
-    const res = await apiFetch('/api/sales', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      setMessage({ type: 'success', text: 'Venta registrada correctamente' });
-      setCart([]);
+  const handleSubmit = async () => {
+    if (cart.length === 0) {
+      setMessage({ type: 'error', text: 'Agrega al menos un producto' });
+      return;
     }
-  } catch (error) {
-    console.error('Error en venta:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error de conexión con el servidor';
-    setMessage({ type: 'error', text: errorMessage });
-  } finally {
-    setLoading(false);
-  }
-};
+
+    const payload = {
+      items: cart.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+    };
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await apiFetch('/api/sales', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Venta registrada correctamente' });
+        setCart([]);
+      } else {
+        const error = await res.text();
+        setMessage({ type: 'error', text: error || 'Error al registrar venta' });
+      }
+    } catch (error) {
+      console.error('Error en venta:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error de conexión con el servidor';
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
@@ -274,7 +273,7 @@ export default function SalesPage() {
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addToCart(barcode)}
-            className="flex-1 p-2 border rounded"
+            className="flex-1 p-2 border rounded text-gray-900"
             disabled={loading}
           />
           <div className="flex gap-2">
@@ -326,13 +325,13 @@ export default function SalesPage() {
                           onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
                           className="w-20 p-1 border rounded text-center text-gray-900"
                         />
-                      </td>
+                       </td>
                       <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
                       <td className="border p-2 text-gray-900">
                         <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700">
                           Eliminar
                         </button>
-                      </td>
+                       </td>
                     </tr>
                   ))}
                 </tbody>
