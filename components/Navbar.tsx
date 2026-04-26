@@ -24,6 +24,7 @@ export default function Navbar() {
     { href: '/inventory', label: 'Inventario' },
     { href: '/sales', label: 'Vender' },
     { href: '/sales-report', label: 'Reporte de ventas' },
+    { href: '/checkout', label: 'Checkout' },  
   ];
 
   return (

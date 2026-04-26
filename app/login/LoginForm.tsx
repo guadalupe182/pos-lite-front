@@ -12,7 +12,9 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Derivar mensaje de éxito desde URL sin useEffect
+  // Obtener returnUrl (por defecto '/')
+  const returnUrl = searchParams?.get('returnUrl') || '/';
+
   const successMsg = searchParams?.get('registered') === 'true'
     ? 'Usuario registrado correctamente. Ahora inicia sesión.'
     : '';
@@ -28,7 +30,8 @@ export default function LoginForm() {
       });
 
       if (res.ok) {
-        router.push('/');
+        // Redirigir a returnUrl (puede ser '/checkout' u otra)
+        router.push(returnUrl);
       } else {
         setError('Credenciales inválidas');
       }
