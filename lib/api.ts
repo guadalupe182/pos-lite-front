@@ -19,7 +19,7 @@ export function getAuthToken(): string | null {
 // Eliminar token (logout)
 export function removeAuthToken() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('access_token');
+    sessionStorage.removeItem('access_token');
   }
 }
 
