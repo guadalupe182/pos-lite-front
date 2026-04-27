@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, setAuthToken } from '@/lib/api';
 import Link from 'next/link';
 
 export default function LoginForm() {
@@ -14,7 +14,6 @@ export default function LoginForm() {
 
   // Obtener returnUrl (por defecto '/')
   const returnUrl = searchParams?.get('returnUrl') || '/';
-
   const successMsg = searchParams?.get('registered') === 'true'
     ? 'Usuario registrado correctamente. Ahora inicia sesión.'
     : '';
@@ -30,10 +29,13 @@ export default function LoginForm() {
       });
 
       if (res.ok) {
-        // Redirigir a returnUrl (puede ser '/checkout' u otra)
-        router.push(returnUrl);
-      } else {
-        setError('Credenciales inválidas');
+        const data = await res.json();
+        if(data.token){
+          setAuthToken(data.token);
+          router.push(returnUrl);
+        }else{
+          setError('Credenciales inválidas');
+        }
       }
     } catch (err) {
       console.error('Error en login:', err);
