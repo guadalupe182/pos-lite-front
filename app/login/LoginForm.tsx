@@ -9,10 +9,10 @@ export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Obtener returnUrl (por defecto '/')
   const returnUrl = searchParams?.get('returnUrl') || '/';
   const successMsg = searchParams?.get('registered') === 'true'
     ? 'Usuario registrado correctamente. Ahora inicia sesión.'
@@ -20,6 +20,8 @@ export default function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setError('');
 
     try {
@@ -30,16 +32,20 @@ export default function LoginForm() {
 
       if (res.ok) {
         const data = await res.json();
-        if(data.token){
+        if (data.token) {
           setAuthToken(data.token);
           router.push(returnUrl);
-        }else{
+        } else {
           setError('Credenciales inválidas');
         }
+      } else {
+        setError('Credenciales inválidas');
       }
     } catch (err) {
       console.error('Error en login:', err);
       setError('Error de conexión con el servidor');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -56,6 +62,7 @@ export default function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-2 mb-4 border border-gray-300 rounded bg-white text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={isSubmitting}
         />
         <input
           type="password"
@@ -64,12 +71,18 @@ export default function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           className="w-full p-2 mb-4 border border-gray-300 rounded bg-white text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={isSubmitting}
         />
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors font-medium"
+          disabled={isSubmitting}
+          className={`w-full p-2 rounded transition-colors font-medium ${
+            isSubmitting 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
         >
-          Ingresar
+          {isSubmitting ? 'Iniciando sesión...' : 'Ingresar'}
         </button>
         <p className="mt-4 text-center text-sm text-gray-600">
           ¿No tienes una cuenta?{' '}

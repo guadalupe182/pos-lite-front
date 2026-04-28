@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { apiFetch } from "@/lib/api";
-import Navbar from "@/components/Navbar";
-import QrScanner from "@/components/QrScanner";
+import { useState, useCallback } from 'react';
+import { apiFetch } from '@/lib/api';
+import Navbar from '@/components/Navbar';
+import QrScanner from '@/components/QrScanner';
 
 type CartItem = {
   productId: number;
@@ -20,25 +20,21 @@ type Category = {
 };
 
 export default function SalesPage() {
-  const [barcode, setBarcode] = useState("");
+  const [barcode, setBarcode] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
 
   const fetchProductByBarcode = useCallback(async (code: string) => {
     try {
-      const res = await apiFetch(
-        `/api/products/barcode/${encodeURIComponent(code)}`,
-      );
+      const res = await apiFetch(`/api/products/barcode/${encodeURIComponent(code)}`);
       if (!res.ok) return null;
       return await res.json();
     } catch (error) {
-      console.error("Error fetching product:", error);
+      console.error('Error fetching product:', error);
       return null;
     }
   }, []);
@@ -51,7 +47,7 @@ export default function SalesPage() {
         if (existingProduct && existingProduct.id) {
           setMessage({
             type: "error",
-            text: `El codigo ${barcode} ya existe. Usa el producto existente`,
+            text: `El código ${barcode} ya existe. Usa el producto existente`,
           });
           return false;
         }
@@ -86,9 +82,7 @@ export default function SalesPage() {
             const num = parseInt(selected || "1", 10);
 
             if (num === 0) {
-              const newCategoryName = prompt(
-                "Ingrese el nombre de la nueva categoría:",
-              );
+              const newCategoryName = prompt("Ingrese el nombre de la nueva categoría:");
               if (newCategoryName && newCategoryName.trim()) {
                 try {
                   const createRes = await apiFetch("/api/categories", {
@@ -99,14 +93,10 @@ export default function SalesPage() {
                     const newCategory = await createRes.json();
                     categoryId = newCategory.id;
                   } else {
-                    alert(
-                      "Error al crear categoría, se usará la categoría por defecto",
-                    );
+                    alert("Error al crear categoría, se usará la categoría por defecto");
                   }
                 } catch {
-                  alert(
-                    "Error al crear categoría, se usará la categoría por defecto",
-                  );
+                  alert("Error al crear categoría, se usará la categoría por defecto");
                 }
               }
             } else if (num >= 1 && num <= categories.length) {
@@ -118,22 +108,15 @@ export default function SalesPage() {
         }
 
         // Stock mínimo
-        const minStockStr = prompt(
-          "Stock mínimo (opcional, presione Enter para 0):",
-          "0",
-        );
+        const minStockStr = prompt("Stock mínimo (opcional, presione Enter para 0):", "0");
         const minStock = parseInt(minStockStr || "0", 10) || 0;
 
-        //  Cantidad inicial a agregar al carrito
-        const quantityStr = prompt(
-          "¿Cuántas unidades deseas agregar al carrito?",
-          "1",
-        );
+        const quantityStr = prompt("¿Cuántas unidades deseas agregar al carrito?", "1");
         const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
 
         const payload = {
           barcode,
-          delta: initialQuantity, // 🔥 Se usa como stock inicial
+          delta: initialQuantity,
           reason: "INBOUND",
           name,
           price,
@@ -181,7 +164,8 @@ export default function SalesPage() {
         }
       };
 
-      if (!code.trim()) return;
+      if (!code.trim() || isProcessing) return;
+      setIsProcessing(true);
       setLoading(true);
       setMessage(null);
 
@@ -193,6 +177,7 @@ export default function SalesPage() {
             setMessage({ type: "error", text: "No se pudo crear el producto" });
           }
           setLoading(false);
+          setIsProcessing(false);
           return;
         }
 
@@ -227,9 +212,10 @@ export default function SalesPage() {
         setMessage({ type: "error", text: "Error al buscar producto" });
       } finally {
         setLoading(false);
+        setIsProcessing(false);
       }
     },
-    [fetchProductByBarcode],
+    [fetchProductByBarcode, isProcessing],
   );
 
   const removeFromCart = (productId: number) => {
@@ -321,19 +307,20 @@ export default function SalesPage() {
             onChange={(e) => setBarcode(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addToCart(barcode)}
             className="flex-1 p-2 border rounded text-gray-900"
-            disabled={loading}
+            disabled={loading || isProcessing}
           />
           <div className="flex gap-2">
             <button
               onClick={() => addToCart(barcode)}
-              disabled={loading || !barcode}
+              disabled={loading || !barcode || isProcessing}
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              Agregar
+              {loading ? "Buscando..." : "Agregar"}
             </button>
             <button
               onClick={handleOpenScanner}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+              disabled={isProcessing}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
             >
               📷 Escanear
             </button>
