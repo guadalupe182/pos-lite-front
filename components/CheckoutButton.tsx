@@ -8,10 +8,11 @@ import { apiFetch } from "@/lib/api";
 initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
 
 interface CheckoutButtonProps {
-  items: { productId: number; quantity: number }[]; // 👈 Recibir el carrito
+  items: { productId: number; quantity: number }[];
+  onSuccess?: () => void;
 }
 
-export default function CheckoutButton({ items }: CheckoutButtonProps) {
+export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps) {
   const router = useRouter();
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,6 @@ export default function CheckoutButton({ items }: CheckoutButtonProps) {
     setLoading(true);
     setError(null);
     try {
-      // Crear preferencia de pago con los items del carrito
       const response = await apiFetch("/api/payments/create-preference", {
         method: "POST",
         body: JSON.stringify({ items }),
@@ -46,8 +46,6 @@ export default function CheckoutButton({ items }: CheckoutButtonProps) {
       let message = "Error al procesar el pago";
       if (err instanceof Error) {
         message = err.message;
-      } else if (typeof err === "string") {
-        message = err;
       }
       setError(message);
     } finally {
@@ -66,23 +64,22 @@ export default function CheckoutButton({ items }: CheckoutButtonProps) {
             creditCard: "all",
           },
         }}
-        onSubmit={async (param) => {
-          console.log("Pago completado", param);
-          // 🔥 Aquí registrar la venta después del pago exitoso
+        onSubmit={async () => {
+          console.log("Pago completado");
           try {
             const saleResponse = await apiFetch("/api/sales", {
               method: "POST",
               body: JSON.stringify({ items }),
             });
             if (saleResponse.ok) {
-              router.push("/sales?success=true");
+              if (onSuccess) onSuccess();
+              router.push("/sales?payment_success=true");
             } else {
               console.error("Error al registrar venta");
             }
           } catch (error) {
             console.error("Error:", error);
           }
-          return { id: preferenceId };
         }}
       />
     );

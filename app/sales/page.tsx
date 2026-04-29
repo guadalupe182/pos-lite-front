@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import QrScanner from '@/components/QrScanner';
@@ -20,6 +21,7 @@ type Category = {
 };
 
 export default function SalesPage() {
+  const router = useRouter();
   const [barcode, setBarcode] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -240,48 +242,6 @@ export default function SalesPage() {
     );
   };
 
-  const handleSubmit = async () => {
-    if (cart.length === 0) {
-      setMessage({ type: "error", text: "Agrega al menos un producto" });
-      return;
-    }
-
-    const payload = {
-      items: cart.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-      })),
-    };
-
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await apiFetch("/api/sales", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        setMessage({ type: "success", text: "Venta registrada correctamente" });
-        setCart([]);
-      } else {
-        const error = await res.text();
-        setMessage({
-          type: "error",
-          text: error || "Error al registrar venta",
-        });
-      }
-    } catch (error) {
-      console.error("Error en venta:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Error de conexión con el servidor";
-      setMessage({ type: "error", text: errorMessage });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
   const handleOpenScanner = () => {
@@ -400,11 +360,14 @@ export default function SalesPage() {
               </table>
             </div>
             <button
-              onClick={handleSubmit}
-              disabled={loading}
+              onClick={() => {
+                localStorage.setItem('cart', JSON.stringify(cart));
+                router.push('/checkout');
+              }}
+              disabled={cart.length === 0}
               className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              {loading ? "Procesando..." : "Confirmar venta"}
+              Ir a pagar
             </button>
           </>
         )}
