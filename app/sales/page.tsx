@@ -44,7 +44,7 @@ export default function SalesPage() {
   const addToCart = useCallback(
     async (code: string) => {
       const createProductAndAddToCart = async (barcode: string) => {
-        //Verificar si el producto ya existe
+        // Verificar si el producto ya existe
         const existingProduct = await fetchProductByBarcode(barcode);
         if (existingProduct && existingProduct.id) {
           setMessage({
@@ -133,17 +133,21 @@ export default function SalesPage() {
           });
           if (res.ok) {
             const product = await res.json();
-            setCart((prev) => [
-              ...prev,
-              {
-                productId: product.id,
-                barcode: product.barcode,
-                name: product.name,
-                price: product.price,
-                quantity: initialQuantity,
-                subtotal: product.price * initialQuantity,
-              },
-            ]);
+            setCart((prev) => {
+              const newCart = [
+                ...prev,
+                {
+                  productId: product.id,
+                  barcode: product.barcode,
+                  name: product.name,
+                  price: product.price,
+                  quantity: initialQuantity,
+                  subtotal: product.price * initialQuantity,
+                },
+              ];
+              localStorage.setItem('cart', JSON.stringify(newCart));
+              return newCart;
+            });
             setMessage({
               type: "success",
               text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))`,
@@ -185,8 +189,9 @@ export default function SalesPage() {
 
         setCart((prev) => {
           const existing = prev.find((item) => item.productId === product.id);
+          let newCart;
           if (existing) {
-            return prev.map((item) =>
+            newCart = prev.map((item) =>
               item.productId === product.id
                 ? {
                     ...item,
@@ -196,7 +201,7 @@ export default function SalesPage() {
                 : item,
             );
           } else {
-            return [
+            newCart = [
               ...prev,
               {
                 productId: product.id,
@@ -208,10 +213,12 @@ export default function SalesPage() {
               },
             ];
           }
+          localStorage.setItem('cart', JSON.stringify(newCart));
+          return newCart;
         });
         setBarcode("");
       } catch {
-        setMessage({ type: "error", text: "Error al buscar producto" });
+        setMessage({ type: "error", text: "Error al buscar prodotto" });
       } finally {
         setLoading(false);
         setIsProcessing(false);
@@ -221,7 +228,11 @@ export default function SalesPage() {
   );
 
   const removeFromCart = (productId: number) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
+    setCart((prev) => {
+      const newCart = prev.filter((item) => item.productId !== productId);
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
+    });
   };
 
   const updateQuantity = (productId: number, newQty: number) => {
@@ -229,8 +240,8 @@ export default function SalesPage() {
       removeFromCart(productId);
       return;
     }
-    setCart((prev) =>
-      prev.map((item) =>
+    setCart((prev) => {
+      const newCart = prev.map((item) =>
         item.productId === productId
           ? {
               ...item,
@@ -238,8 +249,10 @@ export default function SalesPage() {
               subtotal: newQty * item.price,
             }
           : item,
-      ),
-    );
+      );
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
+    });
   };
 
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
