@@ -8,7 +8,7 @@ import { apiFetch } from "@/lib/api";
 initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
 
 interface CheckoutButtonProps {
-  items: { productId: number; quantity: number }[];
+  items: { productId: number; quantity: number; price?: number }[];
   onSuccess?: () => void;
 }
 
@@ -17,6 +17,9 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Calcular el total de la compra
+  const totalAmount = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
   const handleClick = async () => {
     setLoading(true);
@@ -56,7 +59,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   if (preferenceId) {
     return (
       <Payment
-        initialization={{ preferenceId }}
+        initialization={{ preferenceId, amount: totalAmount }}  // Agregar amount
         customization={{
           paymentMethods: {
             atm: "all",
@@ -69,7 +72,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
           try {
             const saleResponse = await apiFetch("/api/sales", {
               method: "POST",
-              body: JSON.stringify({ items }),
+              body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ productId, quantity })) }),
             });
             if (saleResponse.ok) {
               if (onSuccess) onSuccess();
