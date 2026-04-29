@@ -9,10 +9,10 @@ initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
 
 interface CheckoutButtonProps {
   items: { productId: number; quantity: number }[];
-  onSuccess?: () => void;  // 👈 Corregido: onSuccess (con 'cc')
+  onSuccess?: () => void;
 }
 
-export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps) {  //  Añadir onSuccess
+export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps) {
   const router = useRouter();
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
               body: JSON.stringify({ items }),
             });
             if (saleResponse.ok) {
-              if (onSuccess) onSuccess();  //  Llamar a onSuccess si existe
+              if (onSuccess) onSuccess();
               router.push("/sales?payment_success=true");
             } else {
               console.error("Error al registrar venta");
