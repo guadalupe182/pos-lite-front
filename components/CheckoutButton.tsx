@@ -1,20 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // <-- importa useRouter
+import { useRouter } from "next/navigation";
 import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 import { apiFetch } from "@/lib/api";
 
 initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
 
 interface CheckoutButtonProps {
-  amount: number;
-  description: string;
-  quantity: number;
+  items: { productId: number; quantity: number }[]; // 👈 Recibir el carrito
 }
 
-export default function CheckoutButton({ amount, description, quantity }: CheckoutButtonProps) {
-  const router = useRouter(); // <-- hook para redirigir
+export default function CheckoutButton({ items }: CheckoutButtonProps) {
+  const router = useRouter();
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,9 +21,10 @@ export default function CheckoutButton({ amount, description, quantity }: Checko
     setLoading(true);
     setError(null);
     try {
+      // Crear preferencia de pago con los items del carrito
       const response = await apiFetch("/api/payments/create-preference", {
         method: "POST",
-        body: JSON.stringify({ description, quantity, amount }),
+        body: JSON.stringify({ items }),
       });
 
       if (!response.ok) {
@@ -59,7 +58,7 @@ export default function CheckoutButton({ amount, description, quantity }: Checko
   if (preferenceId) {
     return (
       <Payment
-        initialization={{ preferenceId, amount }}
+        initialization={{ preferenceId }}
         customization={{
           paymentMethods: {
             atm: "all",
@@ -69,8 +68,20 @@ export default function CheckoutButton({ amount, description, quantity }: Checko
         }}
         onSubmit={async (param) => {
           console.log("Pago completado", param);
-          // Redirige a la página de ventas (o a donde prefieras) después del pago
-          router.push("/sales");  // o "/success"
+          // 🔥 Aquí registrar la venta después del pago exitoso
+          try {
+            const saleResponse = await apiFetch("/api/sales", {
+              method: "POST",
+              body: JSON.stringify({ items }),
+            });
+            if (saleResponse.ok) {
+              router.push("/sales?success=true");
+            } else {
+              console.error("Error al registrar venta");
+            }
+          } catch (error) {
+            console.error("Error:", error);
+          }
           return { id: preferenceId };
         }}
       />
