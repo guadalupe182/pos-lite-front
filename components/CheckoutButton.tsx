@@ -9,7 +9,6 @@ initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
 
 interface CheckoutButtonProps {
   items: { productId: number; quantity: number; price?: number; name?: string }[];
-
   onSuccess?: () => void;
 }
 
@@ -19,7 +18,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calcular el total de la compra
   const totalAmount = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
   const handleClick = async () => {
@@ -61,7 +59,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
     return (
       <Payment
         initialization={{ preferenceId, amount: totalAmount }}
-
         customization={{
           paymentMethods: {
             atm: "all",
@@ -70,7 +67,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
           },
         }}
         onSubmit={async () => {
-          console.log("Pago completado");
+          console.log("Pago completado (desde frontend)");
           try {
             const saleResponse = await apiFetch("/api/sales", {
               method: "POST",
@@ -78,9 +75,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
             });
             if (saleResponse.ok) {
               if (onSuccess) onSuccess();
-              router.push("/sales?payment_success=true");
-            } else {
-              console.error("Error al registrar venta");
+              // No redirigimos aquí porque MP ya lo hará via back_urls
             }
           } catch (error) {
             console.error("Error:", error);
