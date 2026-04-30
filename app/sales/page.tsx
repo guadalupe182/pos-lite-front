@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import Navbar from '@/components/Navbar';
@@ -30,6 +30,20 @@ export default function SalesPage() {
   const [scanning, setScanning] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
 
+  // Cargar carrito desde localStorage al iniciar
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        setCart(parsedCart);
+        console.log('🔄 Carrito cargado desde localStorage:', parsedCart);
+      } catch (e) {
+        console.error('Error al cargar carrito:', e);
+      }
+    }
+  }, []);
+
   const fetchProductByBarcode = useCallback(async (code: string) => {
     try {
       const res = await apiFetch(`/api/products/barcode/${encodeURIComponent(code)}`);
@@ -41,187 +55,182 @@ export default function SalesPage() {
     }
   }, []);
 
-  const addToCart = useCallback(
-    async (code: string) => {
-      const createProductAndAddToCart = async (barcode: string) => {
-        //Verificar si el producto ya existe
-        const existingProduct = await fetchProductByBarcode(barcode);
-        if (existingProduct && existingProduct.id) {
-          setMessage({
-            type: "error",
-            text: `El código ${barcode} ya existe. Usa el producto existente`,
-          });
-          return false;
-        }
+  const createProductAndAddToCart = useCallback(async (barcode: string) => {
+    const existingProduct = await fetchProductByBarcode(barcode);
+    if (existingProduct && existingProduct.id) {
+      setMessage({
+        type: "error",
+        text: `El código ${barcode} ya existe. Usa el producto existente`,
+      });
+      return false;
+    }
 
-        const name = prompt("Producto no encontrado. Ingrese el nombre:");
-        if (!name) return false;
+    const name = prompt("Producto no encontrado. Ingrese el nombre:");
+    if (!name) return false;
 
-        const priceStr = prompt("Ingrese el precio:");
-        const price = parseFloat(priceStr || "0");
-        if (isNaN(price) || price <= 0) {
-          alert("Precio inválido");
-          return false;
-        }
+    const priceStr = prompt("Ingrese el precio:");
+    const price = parseFloat(priceStr || "0");
+    if (isNaN(price) || price <= 0) {
+      alert("Precio inválido");
+      return false;
+    }
 
-        // Obtener categorías existentes
-        let categories: Category[] = [];
-        let categoryId = 1;
+    let categories: Category[] = [];
+    let categoryId = 1;
 
-        try {
-          const res = await apiFetch("/api/categories");
-          categories = await res.json();
+    try {
+      const res = await apiFetch("/api/categories");
+      categories = await res.json();
 
-          if (categories && categories.length > 0) {
-            const categoryList = categories
-              .map((c, idx) => `${idx + 1}. ${c.name}`)
-              .join("\n");
-            const selected = prompt(
-              `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
-              "1",
-            );
+      if (categories && categories.length > 0) {
+        const categoryList = categories
+          .map((c, idx) => `${idx + 1}. ${c.name}`)
+          .join("\n");
+        const selected = prompt(
+          `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
+          "1",
+        );
 
-            const num = parseInt(selected || "1", 10);
+        const num = parseInt(selected || "1", 10);
 
-            if (num === 0) {
-              const newCategoryName = prompt("Ingrese el nombre de la nueva categoría:");
-              if (newCategoryName && newCategoryName.trim()) {
-                try {
-                  const createRes = await apiFetch("/api/categories", {
-                    method: "POST",
-                    body: JSON.stringify({ name: newCategoryName.trim() }),
-                  });
-                  if (createRes.ok) {
-                    const newCategory = await createRes.json();
-                    categoryId = newCategory.id;
-                  } else {
-                    alert("Error al crear categoría, se usará la categoría por defecto");
-                  }
-                } catch {
-                  alert("Error al crear categoría, se usará la categoría por defecto");
-                }
+        if (num === 0) {
+          const newCategoryName = prompt("Ingrese el nombre de la nueva categoría:");
+          if (newCategoryName && newCategoryName.trim()) {
+            try {
+              const createRes = await apiFetch("/api/categories", {
+                method: "POST",
+                body: JSON.stringify({ name: newCategoryName.trim() }),
+              });
+              if (createRes.ok) {
+                const newCategory = await createRes.json();
+                categoryId = newCategory.id;
+              } else {
+                alert("Error al crear categoría, se usará la categoría por defecto");
               }
-            } else if (num >= 1 && num <= categories.length) {
-              categoryId = categories[num - 1].id;
+            } catch {
+              alert("Error al crear categoría, se usará la categoría por defecto");
             }
           }
-        } catch (error) {
-          console.error("Error fetching categories:", error);
+        } else if (num >= 1 && num <= categories.length) {
+          categoryId = categories[num - 1].id;
         }
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
 
-        // Stock mínimo
-        const minStockStr = prompt("Stock mínimo (opcional, presione Enter para 0):", "0");
-        const minStock = parseInt(minStockStr || "0", 10) || 0;
+    const minStockStr = prompt("Stock mínimo (opcional, presione Enter para 0):", "0");
+    const minStock = parseInt(minStockStr || "0", 10) || 0;
 
-        const quantityStr = prompt("¿Cuántas unidades deseas agregar al carrito?", "1");
-        const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
+    const quantityStr = prompt("¿Cuántas unidades deseas agregar al carrito?", "1");
+    const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
 
-        const payload = {
-          barcode,
-          delta: initialQuantity,
-          reason: "INBOUND",
-          name,
-          price,
-          minStock,
-          categoryId,
-        };
+    const payload = {
+      barcode,
+      delta: initialQuantity,
+      reason: "INBOUND",
+      name,
+      price,
+      minStock,
+      categoryId,
+    };
 
-        try {
-          const res = await apiFetch("/api/products/adjust-by-barcode", {
-            method: "POST",
-            body: JSON.stringify(payload),
-          });
-          if (res.ok) {
-            const product = await res.json();
-            setCart((prev) => [
-              ...prev,
-              {
-                productId: product.id,
-                barcode: product.barcode,
-                name: product.name,
-                price: product.price,
-                quantity: initialQuantity,
-                subtotal: product.price * initialQuantity,
-              },
-            ]);
-            setMessage({
-              type: "success",
-              text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))`,
-            });
-            return true;
-          } else {
-            const error = await res.text();
-            setMessage({
-              type: "error",
-              text: `Error al crear producto: ${error}`,
-            });
-            return false;
-          }
-        } catch {
-          setMessage({
-            type: "error",
-            text: "Error de conexión al crear producto",
-          });
-          return false;
-        }
-      };
-
-      if (!code.trim() || isProcessing) return;
-      setIsProcessing(true);
-      setLoading(true);
-      setMessage(null);
-
-      try {
-        const product = await fetchProductByBarcode(code);
-        if (!product) {
-          const created = await createProductAndAddToCart(code);
-          if (!created) {
-            setMessage({ type: "error", text: "No se pudo crear el producto" });
-          }
-          setLoading(false);
-          setIsProcessing(false);
-          return;
-        }
-
+    try {
+      const res = await apiFetch("/api/products/adjust-by-barcode", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const product = await res.json();
         setCart((prev) => {
-          const existing = prev.find((item) => item.productId === product.id);
-          if (existing) {
-            return prev.map((item) =>
-              item.productId === product.id
-                ? {
-                    ...item,
-                    quantity: item.quantity + 1,
-                    subtotal: (item.quantity + 1) * item.price,
-                  }
-                : item,
-            );
-          } else {
-            return [
-              ...prev,
-              {
-                productId: product.id,
-                barcode: product.barcode,
-                name: product.name,
-                price: product.price,
-                quantity: 1,
-                subtotal: product.price,
-              },
-            ];
-          }
+          const newCart = [...prev, {
+            productId: product.id,
+            barcode: product.barcode,
+            name: product.name,
+            price: product.price,
+            quantity: initialQuantity,
+            subtotal: product.price * initialQuantity,
+          }];
+          localStorage.setItem('cart', JSON.stringify(newCart));
+          console.log('🟢 Nuevo carrito después de crear producto:', newCart);
+          return newCart;
         });
-        setBarcode("");
-      } catch {
-        setMessage({ type: "error", text: "Error al buscar producto" });
-      } finally {
+        setMessage({
+          type: "success",
+          text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))`,
+        });
+        return true;
+      } else {
+        const error = await res.text();
+        setMessage({ type: "error", text: `Error al crear producto: ${error}` });
+        return false;
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión al crear producto" });
+      return false;
+    }
+  }, [fetchProductByBarcode]);
+
+  const addToCart = useCallback(async (code: string) => {
+    if (!code.trim() || isProcessing) return;
+    setIsProcessing(true);
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const product = await fetchProductByBarcode(code);
+      if (!product) {
+        const created = await createProductAndAddToCart(code);
+        if (!created) {
+          setMessage({ type: "error", text: "No se pudo crear el producto" });
+        }
         setLoading(false);
         setIsProcessing(false);
+        return;
       }
-    },
-    [fetchProductByBarcode, isProcessing],
-  );
+
+      setCart((prev) => {
+        const existing = prev.find((item) => item.productId === product.id);
+        let newCart;
+        if (existing) {
+          newCart = prev.map((item) =>
+            item.productId === product.id
+              ? {
+                  ...item,
+                  quantity: item.quantity + 1,
+                  subtotal: (item.quantity + 1) * item.price,
+                }
+              : item
+          );
+        } else {
+          newCart = [...prev, {
+            productId: product.id,
+            barcode: product.barcode,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            subtotal: product.price,
+          }];
+        }
+        localStorage.setItem('cart', JSON.stringify(newCart));
+        console.log('🟡 Nuevo carrito después de agregar producto:', newCart);
+        return newCart;
+      });
+      setBarcode("");
+    } catch {
+      setMessage({ type: "error", text: "Error al buscar producto" });
+    } finally {
+      setLoading(false);
+      setIsProcessing(false);
+    }
+  }, [fetchProductByBarcode, createProductAndAddToCart, isProcessing]);
 
   const removeFromCart = (productId: number) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
+    setCart((prev) => {
+      const newCart = prev.filter((item) => item.productId !== productId);
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
+    });
   };
 
   const updateQuantity = (productId: number, newQty: number) => {
@@ -229,17 +238,19 @@ export default function SalesPage() {
       removeFromCart(productId);
       return;
     }
-    setCart((prev) =>
-      prev.map((item) =>
+    setCart((prev) => {
+      const newCart = prev.map((item) =>
         item.productId === productId
           ? {
               ...item,
               quantity: newQty,
               subtotal: newQty * item.price,
             }
-          : item,
-      ),
-    );
+          : item
+      );
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
+    });
   };
 
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
@@ -288,9 +299,7 @@ export default function SalesPage() {
         </div>
 
         {message && (
-          <div
-            className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-          >
+          <div className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
             {message.text}
           </div>
         )}
@@ -312,31 +321,19 @@ export default function SalesPage() {
                   {cart.map((item) => (
                     <tr key={item.productId}>
                       <td className="border p-2 text-gray-900">{item.name}</td>
-                      <td className="border p-2 text-gray-900">
-                        ${item.price.toFixed(2)}
-                      </td>
+                      <td className="border p-2 text-gray-900">${item.price.toFixed(2)}</td>
                       <td className="border p-2 text-gray-900">
                         <input
                           type="number"
                           min="1"
                           value={item.quantity}
-                          onChange={(e) =>
-                            updateQuantity(
-                              item.productId,
-                              parseInt(e.target.value) || 1,
-                            )
-                          }
+                          onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
                           className="w-20 p-1 border rounded text-center text-gray-900"
                         />
                       </td>
+                      <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
                       <td className="border p-2 text-gray-900">
-                        ${item.subtotal.toFixed(2)}
-                      </td>
-                      <td className="border p-2 text-gray-900">
-                        <button
-                          onClick={() => removeFromCart(item.productId)}
-                          className="text-red-500 hover:text-red-700"
-                        >
+                        <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700">
                           Eliminar
                         </button>
                       </td>
@@ -345,15 +342,8 @@ export default function SalesPage() {
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td
-                      colSpan={3}
-                      className="border p-2 text-right font-bold text-gray-900"
-                    >
-                      Total
-                    </td>
-                    <td className="border p-2 font-bold text-gray-900">
-                      ${total.toFixed(2)}
-                    </td>
+                    <td colSpan={3} className="border p-2 text-right font-bold text-gray-900">Total</td>
+                    <td className="border p-2 font-bold text-gray-900">${total.toFixed(2)}</td>
                     <td className="border p-2"></td>
                   </tr>
                 </tfoot>
@@ -378,12 +368,7 @@ export default function SalesPage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <div className="flex justify-between mb-2">
               <h2 className="text-lg font-bold">Escanea el código de barras</h2>
-              <button
-                onClick={handleCloseScanner}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
+              <button onClick={handleCloseScanner} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <QrScanner
               key={scannerKey}
@@ -396,9 +381,7 @@ export default function SalesPage() {
               onError={(err) => console.error("Scanner error:", err)}
               facingMode="environment"
             />
-            <p className="text-sm text-gray-500 mt-2 text-center">
-              Apunta la cámara al código de barras
-            </p>
+            <p className="text-sm text-gray-500 mt-2 text-center">Apunta la cámara al código de barras</p>
           </div>
         </div>
       )}

@@ -8,7 +8,8 @@ import { apiFetch } from "@/lib/api";
 initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
 
 interface CheckoutButtonProps {
-  items: { productId: number; quantity: number; price?: number }[];
+  items: { productId: number; quantity: number; price?: number; name?: string }[];
+
   onSuccess?: () => void;
 }
 
@@ -59,7 +60,8 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   if (preferenceId) {
     return (
       <Payment
-        initialization={{ preferenceId, amount: totalAmount }}  // Agregar amount
+        initialization={{ preferenceId, amount: totalAmount }}
+
         customization={{
           paymentMethods: {
             atm: "all",
