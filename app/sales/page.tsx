@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import Navbar from '@/components/Navbar';
@@ -29,6 +29,20 @@ export default function SalesPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
+
+  // Cargar carrito desde localStorage al iniciar
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        setCart(parsedCart);
+        console.log('🔄 Carrito cargado desde localStorage:', parsedCart);
+      } catch (e) {
+        console.error('Error al cargar carrito:', e);
+      }
+    }
+  }, []);
 
   const fetchProductByBarcode = useCallback(async (code: string) => {
     try {
@@ -129,20 +143,16 @@ export default function SalesPage() {
       if (res.ok) {
         const product = await res.json();
         setCart((prev) => {
-          console.log('🟢 Creando nuevo producto - Carrito anterior:', prev);
-          const newCart = [
-            ...prev,
-            {
-              productId: product.id,
-              barcode: product.barcode,
-              name: product.name,
-              price: product.price,
-              quantity: initialQuantity,
-              subtotal: product.price * initialQuantity,
-            },
-          ];
-          console.log('🟢 Nuevo carrito después de crear producto:', newCart);
+          const newCart = [...prev, {
+            productId: product.id,
+            barcode: product.barcode,
+            name: product.name,
+            price: product.price,
+            quantity: initialQuantity,
+            subtotal: product.price * initialQuantity,
+          }];
           localStorage.setItem('cart', JSON.stringify(newCart));
+          console.log('🟢 Nuevo carrito después de crear producto:', newCart);
           return newCart;
         });
         setMessage({
@@ -152,75 +162,68 @@ export default function SalesPage() {
         return true;
       } else {
         const error = await res.text();
-        setMessage({
-          type: "error",
-          text: `Error al crear producto: ${error}`,
-        });
+        setMessage({ type: "error", text: `Error al crear producto: ${error}` });
         return false;
       }
     } catch {
-      setMessage({
-        type: "error",
-        text: "Error de conexión al crear producto",
-      });
+      setMessage({ type: "error", text: "Error de conexión al crear producto" });
       return false;
     }
   }, [fetchProductByBarcode]);
 
-  const addToCart = async (code: string) => {
-  if (!code.trim() || isProcessing) return;
-  setIsProcessing(true);
-  setLoading(true);
-  setMessage(null);
+  const addToCart = useCallback(async (code: string) => {
+    if (!code.trim() || isProcessing) return;
+    setIsProcessing(true);
+    setLoading(true);
+    setMessage(null);
 
-  try {
-    const product = await fetchProductByBarcode(code);
-    if (!product) {
-      const created = await createProductAndAddToCart(code);
-      if (!created) {
-        setMessage({ type: "error", text: "No se pudo crear el producto" });
+    try {
+      const product = await fetchProductByBarcode(code);
+      if (!product) {
+        const created = await createProductAndAddToCart(code);
+        if (!created) {
+          setMessage({ type: "error", text: "No se pudo crear el producto" });
+        }
+        setLoading(false);
+        setIsProcessing(false);
+        return;
       }
+
+      setCart((prev) => {
+        const existing = prev.find((item) => item.productId === product.id);
+        let newCart;
+        if (existing) {
+          newCart = prev.map((item) =>
+            item.productId === product.id
+              ? {
+                  ...item,
+                  quantity: item.quantity + 1,
+                  subtotal: (item.quantity + 1) * item.price,
+                }
+              : item
+          );
+        } else {
+          newCart = [...prev, {
+            productId: product.id,
+            barcode: product.barcode,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            subtotal: product.price,
+          }];
+        }
+        localStorage.setItem('cart', JSON.stringify(newCart));
+        console.log('🟡 Nuevo carrito después de agregar producto:', newCart);
+        return newCart;
+      });
+      setBarcode("");
+    } catch {
+      setMessage({ type: "error", text: "Error al buscar producto" });
+    } finally {
       setLoading(false);
       setIsProcessing(false);
-      return;
     }
-
-    const existing = cart.find((item) => item.productId === product.id);
-    let newCart;
-    if (existing) {
-      newCart = cart.map((item) =>
-        item.productId === product.id
-          ? {
-              ...item,
-              quantity: item.quantity + 1,
-              subtotal: (item.quantity + 1) * item.price,
-            }
-          : item
-      );
-    } else {
-      newCart = [
-        ...cart,
-        {
-          productId: product.id,
-          barcode: product.barcode,
-          name: product.name,
-          price: product.price,
-          quantity: 1,
-          subtotal: product.price,
-        },
-      ];
-    }
-    console.log('🟡 Nuevo carrito:', newCart);
-    localStorage.setItem('cart', JSON.stringify(newCart));
-    setCart(newCart);
-    setBarcode("");
-  } catch {
-    setMessage({ type: "error", text: "Error al buscar producto" });
-  } finally {
-    setLoading(false);
-    setIsProcessing(false);
-  }
-};
+  }, [fetchProductByBarcode, createProductAndAddToCart, isProcessing]);
 
   const removeFromCart = (productId: number) => {
     setCart((prev) => {
@@ -296,9 +299,7 @@ export default function SalesPage() {
         </div>
 
         {message && (
-          <div
-            className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-          >
+          <div className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
             {message.text}
           </div>
         )}
@@ -320,31 +321,19 @@ export default function SalesPage() {
                   {cart.map((item) => (
                     <tr key={item.productId}>
                       <td className="border p-2 text-gray-900">{item.name}</td>
-                      <td className="border p-2 text-gray-900">
-                        ${item.price.toFixed(2)}
-                      </td>
+                      <td className="border p-2 text-gray-900">${item.price.toFixed(2)}</td>
                       <td className="border p-2 text-gray-900">
                         <input
                           type="number"
                           min="1"
                           value={item.quantity}
-                          onChange={(e) =>
-                            updateQuantity(
-                              item.productId,
-                              parseInt(e.target.value) || 1,
-                            )
-                          }
+                          onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
                           className="w-20 p-1 border rounded text-center text-gray-900"
                         />
                       </td>
+                      <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
                       <td className="border p-2 text-gray-900">
-                        ${item.subtotal.toFixed(2)}
-                      </td>
-                      <td className="border p-2 text-gray-900">
-                        <button
-                          onClick={() => removeFromCart(item.productId)}
-                          className="text-red-500 hover:text-red-700"
-                        >
+                        <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700">
                           Eliminar
                         </button>
                       </td>
@@ -353,15 +342,8 @@ export default function SalesPage() {
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td
-                      colSpan={3}
-                      className="border p-2 text-right font-bold text-gray-900"
-                    >
-                      Total
-                    </td>
-                    <td className="border p-2 font-bold text-gray-900">
-                      ${total.toFixed(2)}
-                    </td>
+                    <td colSpan={3} className="border p-2 text-right font-bold text-gray-900">Total</td>
+                    <td className="border p-2 font-bold text-gray-900">${total.toFixed(2)}</td>
                     <td className="border p-2"></td>
                   </tr>
                 </tfoot>
@@ -386,12 +368,7 @@ export default function SalesPage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <div className="flex justify-between mb-2">
               <h2 className="text-lg font-bold">Escanea el código de barras</h2>
-              <button
-                onClick={handleCloseScanner}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
+              <button onClick={handleCloseScanner} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <QrScanner
               key={scannerKey}
@@ -404,9 +381,7 @@ export default function SalesPage() {
               onError={(err) => console.error("Scanner error:", err)}
               facingMode="environment"
             />
-            <p className="text-sm text-gray-500 mt-2 text-center">
-              Apunta la cámara al código de barras
-            </p>
+            <p className="text-sm text-gray-500 mt-2 text-center">Apunta la cámara al código de barras</p>
           </div>
         </div>
       )}
