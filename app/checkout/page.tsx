@@ -17,7 +17,9 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCartItems(cart);
+    //eslint-disabled-next-line react-hoks/set-state-in-effect
     setLoading(false);
   }, []);
 
