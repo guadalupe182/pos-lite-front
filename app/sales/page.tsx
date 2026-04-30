@@ -41,191 +41,186 @@ export default function SalesPage() {
     }
   }, []);
 
-  const addToCart = useCallback(
-    async (code: string) => {
-      const createProductAndAddToCart = async (barcode: string) => {
-        // Verificar si el producto ya existe
-        const existingProduct = await fetchProductByBarcode(barcode);
-        if (existingProduct && existingProduct.id) {
-          setMessage({
-            type: "error",
-            text: `El código ${barcode} ya existe. Usa el producto existente`,
-          });
-          return false;
-        }
+  const createProductAndAddToCart = useCallback(async (barcode: string) => {
+    const existingProduct = await fetchProductByBarcode(barcode);
+    if (existingProduct && existingProduct.id) {
+      setMessage({
+        type: "error",
+        text: `El código ${barcode} ya existe. Usa el producto existente`,
+      });
+      return false;
+    }
 
-        const name = prompt("Producto no encontrado. Ingrese el nombre:");
-        if (!name) return false;
+    const name = prompt("Producto no encontrado. Ingrese el nombre:");
+    if (!name) return false;
 
-        const priceStr = prompt("Ingrese el precio:");
-        const price = parseFloat(priceStr || "0");
-        if (isNaN(price) || price <= 0) {
-          alert("Precio inválido");
-          return false;
-        }
+    const priceStr = prompt("Ingrese el precio:");
+    const price = parseFloat(priceStr || "0");
+    if (isNaN(price) || price <= 0) {
+      alert("Precio inválido");
+      return false;
+    }
 
-        // Obtener categorías existentes
-        let categories: Category[] = [];
-        let categoryId = 1;
+    let categories: Category[] = [];
+    let categoryId = 1;
 
-        try {
-          const res = await apiFetch("/api/categories");
-          categories = await res.json();
+    try {
+      const res = await apiFetch("/api/categories");
+      categories = await res.json();
 
-          if (categories && categories.length > 0) {
-            const categoryList = categories
-              .map((c, idx) => `${idx + 1}. ${c.name}`)
-              .join("\n");
-            const selected = prompt(
-              `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
-              "1",
-            );
+      if (categories && categories.length > 0) {
+        const categoryList = categories
+          .map((c, idx) => `${idx + 1}. ${c.name}`)
+          .join("\n");
+        const selected = prompt(
+          `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
+          "1",
+        );
 
-            const num = parseInt(selected || "1", 10);
+        const num = parseInt(selected || "1", 10);
 
-            if (num === 0) {
-              const newCategoryName = prompt("Ingrese el nombre de la nueva categoría:");
-              if (newCategoryName && newCategoryName.trim()) {
-                try {
-                  const createRes = await apiFetch("/api/categories", {
-                    method: "POST",
-                    body: JSON.stringify({ name: newCategoryName.trim() }),
-                  });
-                  if (createRes.ok) {
-                    const newCategory = await createRes.json();
-                    categoryId = newCategory.id;
-                  } else {
-                    alert("Error al crear categoría, se usará la categoría por defecto");
-                  }
-                } catch {
-                  alert("Error al crear categoría, se usará la categoría por defecto");
-                }
+        if (num === 0) {
+          const newCategoryName = prompt("Ingrese el nombre de la nueva categoría:");
+          if (newCategoryName && newCategoryName.trim()) {
+            try {
+              const createRes = await apiFetch("/api/categories", {
+                method: "POST",
+                body: JSON.stringify({ name: newCategoryName.trim() }),
+              });
+              if (createRes.ok) {
+                const newCategory = await createRes.json();
+                categoryId = newCategory.id;
+              } else {
+                alert("Error al crear categoría, se usará la categoría por defecto");
               }
-            } else if (num >= 1 && num <= categories.length) {
-              categoryId = categories[num - 1].id;
+            } catch {
+              alert("Error al crear categoría, se usará la categoría por defecto");
             }
           }
-        } catch (error) {
-          console.error("Error fetching categories:", error);
+        } else if (num >= 1 && num <= categories.length) {
+          categoryId = categories[num - 1].id;
         }
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
 
-        // Stock mínimo
-        const minStockStr = prompt("Stock mínimo (opcional, presione Enter para 0):", "0");
-        const minStock = parseInt(minStockStr || "0", 10) || 0;
+    const minStockStr = prompt("Stock mínimo (opcional, presione Enter para 0):", "0");
+    const minStock = parseInt(minStockStr || "0", 10) || 0;
 
-        const quantityStr = prompt("¿Cuántas unidades deseas agregar al carrito?", "1");
-        const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
+    const quantityStr = prompt("¿Cuántas unidades deseas agregar al carrito?", "1");
+    const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
 
-        const payload = {
-          barcode,
-          delta: initialQuantity,
-          reason: "INBOUND",
-          name,
-          price,
-          minStock,
-          categoryId,
-        };
+    const payload = {
+      barcode,
+      delta: initialQuantity,
+      reason: "INBOUND",
+      name,
+      price,
+      minStock,
+      categoryId,
+    };
 
-        try {
-          const res = await apiFetch("/api/products/adjust-by-barcode", {
-            method: "POST",
-            body: JSON.stringify(payload),
-          });
-          if (res.ok) {
-            const product = await res.json();
-            setCart((prev) => {
-              const newCart = [
-                ...prev,
-                {
-                  productId: product.id,
-                  barcode: product.barcode,
-                  name: product.name,
-                  price: product.price,
-                  quantity: initialQuantity,
-                  subtotal: product.price * initialQuantity,
-                },
-              ];
-              localStorage.setItem('cart', JSON.stringify(newCart));
-              return newCart;
-            });
-            setMessage({
-              type: "success",
-              text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))`,
-            });
-            return true;
-          } else {
-            const error = await res.text();
-            setMessage({
-              type: "error",
-              text: `Error al crear producto: ${error}`,
-            });
-            return false;
-          }
-        } catch {
-          setMessage({
-            type: "error",
-            text: "Error de conexión al crear producto",
-          });
-          return false;
-        }
-      };
-
-      if (!code.trim() || isProcessing) return;
-      setIsProcessing(true);
-      setLoading(true);
-      setMessage(null);
-
-      try {
-        const product = await fetchProductByBarcode(code);
-        if (!product) {
-          const created = await createProductAndAddToCart(code);
-          if (!created) {
-            setMessage({ type: "error", text: "No se pudo crear el producto" });
-          }
-          setLoading(false);
-          setIsProcessing(false);
-          return;
-        }
-
+    try {
+      const res = await apiFetch("/api/products/adjust-by-barcode", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const product = await res.json();
         setCart((prev) => {
-          const existing = prev.find((item) => item.productId === product.id);
-          let newCart;
-          if (existing) {
-            newCart = prev.map((item) =>
-              item.productId === product.id
-                ? {
-                    ...item,
-                    quantity: item.quantity + 1,
-                    subtotal: (item.quantity + 1) * item.price,
-                  }
-                : item,
-            );
-          } else {
-            newCart = [
-              ...prev,
-              {
-                productId: product.id,
-                barcode: product.barcode,
-                name: product.name,
-                price: product.price,
-                quantity: 1,
-                subtotal: product.price,
-              },
-            ];
-          }
+          console.log('🟢 Creando nuevo producto - Carrito anterior:', prev);
+          const newCart = [
+            ...prev,
+            {
+              productId: product.id,
+              barcode: product.barcode,
+              name: product.name,
+              price: product.price,
+              quantity: initialQuantity,
+              subtotal: product.price * initialQuantity,
+            },
+          ];
+          console.log('🟢 Nuevo carrito después de crear producto:', newCart);
           localStorage.setItem('cart', JSON.stringify(newCart));
           return newCart;
         });
-        setBarcode("");
-      } catch {
-        setMessage({ type: "error", text: "Error al buscar prodotto" });
-      } finally {
-        setLoading(false);
-        setIsProcessing(false);
+        setMessage({
+          type: "success",
+          text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))`,
+        });
+        return true;
+      } else {
+        const error = await res.text();
+        setMessage({
+          type: "error",
+          text: `Error al crear producto: ${error}`,
+        });
+        return false;
       }
-    },
-    [fetchProductByBarcode, isProcessing],
-  );
+    } catch {
+      setMessage({
+        type: "error",
+        text: "Error de conexión al crear producto",
+      });
+      return false;
+    }
+  }, [fetchProductByBarcode]);
+
+  const addToCart = async (code: string) => {
+  if (!code.trim() || isProcessing) return;
+  setIsProcessing(true);
+  setLoading(true);
+  setMessage(null);
+
+  try {
+    const product = await fetchProductByBarcode(code);
+    if (!product) {
+      const created = await createProductAndAddToCart(code);
+      if (!created) {
+        setMessage({ type: "error", text: "No se pudo crear el producto" });
+      }
+      setLoading(false);
+      setIsProcessing(false);
+      return;
+    }
+
+    const existing = cart.find((item) => item.productId === product.id);
+    let newCart;
+    if (existing) {
+      newCart = cart.map((item) =>
+        item.productId === product.id
+          ? {
+              ...item,
+              quantity: item.quantity + 1,
+              subtotal: (item.quantity + 1) * item.price,
+            }
+          : item
+      );
+    } else {
+      newCart = [
+        ...cart,
+        {
+          productId: product.id,
+          barcode: product.barcode,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          subtotal: product.price,
+        },
+      ];
+    }
+    console.log('🟡 Nuevo carrito:', newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
+    setCart(newCart);
+    setBarcode("");
+  } catch {
+    setMessage({ type: "error", text: "Error al buscar producto" });
+  } finally {
+    setLoading(false);
+    setIsProcessing(false);
+  }
+};
 
   const removeFromCart = (productId: number) => {
     setCart((prev) => {
@@ -248,7 +243,7 @@ export default function SalesPage() {
               quantity: newQty,
               subtotal: newQty * item.price,
             }
-          : item,
+          : item
       );
       localStorage.setItem('cart', JSON.stringify(newCart));
       return newCart;
