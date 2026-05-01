@@ -50,6 +50,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
         message = err.message;
       }
       setError(message);
+      router.push("/payment/failure");
     } finally {
       setLoading(false);
     }
@@ -66,6 +67,13 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
             creditCard: "all",
           },
         }}
+        onReady={() => {
+          console.log("Payment brick ready");
+        }}
+        onError={async (error) => {
+          console.error("Payment error:", error);
+          router.push("/payment/failure");
+        }}
         onSubmit={async () => {
           console.log("Pago completado (desde frontend)");
           try {
@@ -75,11 +83,13 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
             });
             if (saleResponse.ok) {
               if (onSuccess) onSuccess();
-              // No redirigimos aquí porque MP ya lo hará via back_urls
             }
           } catch (error) {
-            console.error("Error:", error);
+            console.error("Error registrando venta:", error);
           }
+          setTimeout(() => {
+            router.push("/payment/success");
+          }, 2000);
         }}
       />
     );
