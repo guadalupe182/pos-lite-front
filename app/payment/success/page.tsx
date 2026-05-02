@@ -1,20 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function PaymentSuccessPage() {
+// Componente interno que usa useSearchParams
+function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const method = searchParams.get("method");
   const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
-    // Limpiar carrito después de pago exitoso
     localStorage.removeItem("cart");
     
-    // Redirigir automáticamente después de 5 segundos
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -31,9 +30,9 @@ export default function PaymentSuccessPage() {
 
   const getMessage = () => {
     if (method === "cash") {
-      return "💵 Venta registrada en efectivo exitosamente";
+      return " Venta registrada en efectivo exitosamente";
     }
-    return "💳 Tu pago con tarjeta se ha realizado correctamente";
+    return " Tu pago con tarjeta se ha realizado correctamente";
   };
 
   return (
@@ -64,5 +63,14 @@ export default function PaymentSuccessPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Componente principal con Suspense
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Cargando...</div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
