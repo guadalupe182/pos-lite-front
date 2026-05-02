@@ -11,16 +11,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // === Ruta pública de login ===
-  if (pathname === '/login') {
+  // === Rutas públicas de autenticación ===
+  if (pathname === '/login' || pathname === '/register') {
     if (token) {
-      // Si ya tiene token, redirigir al dashboard
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return NextResponse.next();
   }
 
-  // === Rutas protegidas (dashboard y resto) ===
+  // === Rutas de callback de MercadoPago (no requieren token) ===
+  if (pathname.startsWith('/payment/success') ||
+      pathname.startsWith('/payment/failure') ||
+      pathname.startsWith('/payment/pending')) {
+    return NextResponse.next();
+  }
+
+  // === Rutas protegidas ===
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
@@ -29,7 +35,7 @@ export async function proxy(request: NextRequest) {
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     await jwtVerify(token, secret);
-  } catch  {
+  } catch {
     const response = NextResponse.redirect(new URL('/login', request.url));
     response.cookies.delete('access_token');
     return response;
@@ -38,6 +44,15 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+//  Esta regex es válida y compatible
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };
