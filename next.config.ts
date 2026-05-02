@@ -13,7 +13,13 @@ export default isProd
       dest: "public",
       register: true,
       workboxOptions: {
-      skipWaiting: true,
-      }
+        skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\/.*/i,
+            handler: 'NetworkOnly',
+          },
+        ],
+      },
     })(nextConfig)
   : nextConfig;

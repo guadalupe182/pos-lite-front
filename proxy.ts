@@ -2,60 +2,60 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
+// Rutas que NO requieren autenticación (públicas)
+const publicPaths = [
+  '/login',
+  '/register',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/logout',
+  '/payment/success',
+  '/payment/failure',
+  '/payment/pending',
+];
+
+// Archivos estáticos que NO requieren autenticación
+const isStaticAsset = (pathname: string) => {
+  return (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/icon/') ||
+    pathname === '/sw.js' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname.includes('.js') ||
+    pathname.includes('.css') ||
+    pathname.includes('.png') ||
+    pathname.includes('.jpg') ||
+    pathname.includes('.svg') ||
+    pathname.includes('.ico') ||
+    pathname.includes('.woff') ||
+    pathname.includes('.woff2') ||
+    pathname.includes('.json')
+  );
+};
+
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
   const { pathname } = request.nextUrl;
 
-  // === EXCLUSIONES COMPLETAS (no requieren autenticación) ===
-  
-  // 1. Rutas de API
-  if (pathname.startsWith('/api')) {
+  // 1. Excluir TODOS los assets estáticos (incluyendo PWA)
+  if (isStaticAsset(pathname)) {
     return NextResponse.next();
   }
 
-  // 2. Assets de PWA y Service Worker
-  if (pathname === '/sw.js' || 
-      pathname === '/manifest.webmanifest' ||
-      pathname.startsWith('/workbox-') ||
-      pathname.endsWith('.js') && pathname.includes('workbox')) {
-    return NextResponse.next();
-  }
-
-  // 3. Archivos estáticos comunes
-  if (pathname.startsWith('/_next/') ||
-      pathname.includes('.ico') ||
-      pathname.includes('.png') ||
-      pathname.includes('.jpg') ||
-      pathname.includes('.jpeg') ||
-      pathname.includes('.svg') ||
-      pathname.includes('.css') ||
-      pathname.includes('.woff') ||
-      pathname.includes('.woff2') ||
-      pathname.includes('.ttf')) {
-    return NextResponse.next();
-  }
-
-  // 4. Rutas públicas de autenticación
-  if (pathname === '/login' || pathname === '/register') {
-    if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+  // 2. Excluir rutas públicas específicas
+  if (publicPaths.some(route => pathname === route || pathname.startsWith(route + '/'))) {
+    if ((pathname === '/login' || pathname === '/register') && token) {
+      return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
   }
 
-  // 5. Callbacks de MercadoPago
-  if (pathname.startsWith('/payment/success') ||
-      pathname.startsWith('/payment/failure') ||
-      pathname.startsWith('/payment/pending')) {
-    return NextResponse.next();
-  }
-
-  // === PROTECCIÓN ===
+  // 3. Proteger rutas privadas
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // === VERIFICAR TOKEN ===
+  // 4. Verificar token
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     await jwtVerify(token, secret);
@@ -68,9 +68,6 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Matcher: excluye todo lo que no necesita autenticación
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|workbox-.*\\.js).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
