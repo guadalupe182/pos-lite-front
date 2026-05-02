@@ -1,56 +1,68 @@
-'use client';
+"use client";
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import Navbar from '@/components/Navbar';
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-// Componente interno que usa useSearchParams
-function PaymentSuccessContent() {
+export default function PaymentSuccessPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const preferenceId = searchParams.get('preference_id');
+  const method = searchParams.get("method");
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    // Limpiar carrito después de pago exitoso
+    localStorage.removeItem("cart");
+    
+    // Redirigir automáticamente después de 5 segundos
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          router.push("/sales");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [router]);
+
+  const getMessage = () => {
+    if (method === "cash") {
+      return "💵 Venta registrada en efectivo exitosamente";
+    }
+    return "💳 Tu pago con tarjeta se ha realizado correctamente";
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg text-center">
-        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-          <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-        </div>
-        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-          ¡Pago exitoso!
-        </h2>
-        <p className="mt-2 text-sm text-gray-600">
-          Tu transacción se ha realizado correctamente. En breve recibirás un correo de confirmación.
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+      <div className="bg-white border border-green-400 text-green-700 px-6 py-8 rounded-lg shadow-lg text-center max-w-md w-full">
+        <div className="text-6xl mb-4">✅</div>
+        <h1 className="text-2xl font-bold mb-2">¡Pago exitoso!</h1>
+        <p className="mb-4">{getMessage()}</p>
+        <p className="mb-4 text-sm text-gray-500">
+          En breve recibirás tu comprobante.
         </p>
-        {preferenceId && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-md text-left">
-            <p className="text-xs text-gray-500">ID de referencia:</p>
-            <p className="text-sm font-mono text-gray-700">{preferenceId}</p>
-          </div>
-        )}
-        <div className="mt-6 flex flex-col gap-3">
-          <Link href="/sales" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-            Regresar a ventas
+        <div className="flex gap-4 justify-center">
+          <Link
+            href="/sales"
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+          >
+            Registrar nueva venta
           </Link>
-          <Link href="/sales-report" className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-            Ver reporte de ventas
+          <Link
+            href="/sales-report"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+          >
+            Ver reporte
           </Link>
         </div>
+        <p className="text-sm text-gray-400 mt-4">
+          Redirigiendo a ventas en {countdown} segundos...
+        </p>
       </div>
     </div>
-  );
-}
-
-// Componente principal con Suspense
-export default function PaymentSuccessPage() {
-  return (
-    <>
-      <Navbar />
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Cargando...</div>}>
-        <PaymentSuccessContent />
-      </Suspense>
-    </>
   );
 }

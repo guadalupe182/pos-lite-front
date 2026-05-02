@@ -17,10 +17,55 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"mp" | "cash">("mp");
 
   const totalAmount = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
-  const handleClick = async () => {
+  // Manejar pago en efectivo
+  const handleCashPayment = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiFetch("/api/sales", {
+        method: "POST",
+        body: JSON.stringify({ 
+          items: items.map(({ productId, quantity }) => ({ productId, quantity })) 
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          window.location.href = "/login?returnUrl=/checkout";
+          return;
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("Venta registrada en efectivo:", data);
+      
+      if (onSuccess) onSuccess();
+      
+      // Limpiar carrito del localStorage
+      localStorage.removeItem("cart");
+      
+      // Redirigir a página de éxito
+      router.push("/payment/success?method=cash");
+    } catch (err: unknown) {
+      console.error("Error al registrar venta en efectivo", err);
+      let message = "Error al procesar el pago en efectivo";
+      if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
+      router.push("/payment/failure");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manejar pago con MercadoPago
+  const handleMPPayment = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -56,6 +101,7 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
     }
   };
 
+  // Si ya tenemos preferenceId, mostrar el brick de MercadoPago
   if (preferenceId) {
     return (
       <Payment
@@ -95,15 +141,42 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
     );
   }
 
+  // Mostrar selector de método de pago
   return (
     <div className="space-y-4">
+      {/* Selector de método de pago */}
+      <div className="flex gap-4 justify-center">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            value="mp"
+            checked={paymentMethod === "mp"}
+            onChange={() => setPaymentMethod("mp")}
+            className="cursor-pointer"
+          />
+          <span>💳 Tarjeta (MercadoPago)</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            value="cash"
+            checked={paymentMethod === "cash"}
+            onChange={() => setPaymentMethod("cash")}
+            className="cursor-pointer"
+          />
+          <span>💵 Efectivo</span>
+        </label>
+      </div>
+
+      {/* Botón de pago dinámico */}
       <button
-        onClick={handleClick}
+        onClick={paymentMethod === "mp" ? handleMPPayment : handleCashPayment}
         disabled={loading}
         className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "Procesando..." : "Pagar con Mercado Pago"}
+        {loading ? "Procesando..." : paymentMethod === "mp" ? "Pagar con Mercado Pago" : "Pagar en efectivo"}
       </button>
+
       {error && (
         <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
           {error}
