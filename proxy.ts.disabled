@@ -9,6 +9,7 @@ const publicPaths = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/logout',
+  '/api/auth/me',
   '/payment/success',
   '/payment/failure',
   '/payment/pending',
