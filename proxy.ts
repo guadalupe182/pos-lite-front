@@ -6,12 +6,24 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
   const { pathname } = request.nextUrl;
 
-  // === No interferir con las rutas de API ===
+  // === EXCLUSIONES (no requieren autenticación) ===
+  // 1. Rutas de API
   if (pathname.startsWith('/api')) {
     return NextResponse.next();
   }
 
-  // === Rutas públicas de autenticación ===
+  // 2. Assets de PWA y estáticos
+  if (pathname === '/sw.js' || 
+      pathname === '/manifest.webmanifest' ||
+      pathname.startsWith('/_next/') ||
+      pathname.includes('.ico') ||
+      pathname.includes('.png') ||
+      pathname.includes('.jpg') ||
+      pathname.includes('.svg')) {
+    return NextResponse.next();
+  }
+
+  // 3. Rutas públicas de autenticación
   if (pathname === '/login' || pathname === '/register') {
     if (token) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -19,19 +31,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // === Rutas de callback de MercadoPago (no requieren token) ===
+  // 4. Callbacks de MercadoPago
   if (pathname.startsWith('/payment/success') ||
       pathname.startsWith('/payment/failure') ||
       pathname.startsWith('/payment/pending')) {
     return NextResponse.next();
   }
 
-  // === Rutas protegidas ===
+  // === PROTECCIÓN ===
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // === Verificar validez del token ===
+  // === VERIFICAR TOKEN ===
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     await jwtVerify(token, secret);
@@ -44,15 +56,9 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-//  Esta regex es válida y compatible
+// Matcher simple: excluye assets estáticos
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest).*)',
   ],
 };
