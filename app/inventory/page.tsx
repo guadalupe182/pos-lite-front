@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import * as XLSX from "xlsx";
@@ -31,7 +31,7 @@ export default function InventoryPage() {
     try {
       const res = await apiFetch("/api/sales/inventory-report");
       const data = await res.json();
-      setItems(data);
+      setItems(Array.isArray(data) ? data : []);
     } catch {
       setError("Error al cargar inventario");
     } finally {
@@ -43,12 +43,23 @@ export default function InventoryPage() {
     fetchInventory();
   }, [fetchInventory]);
 
-  // Filtrar inventario por nombre o código de barras
-  const filteredItems = items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.barcode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  //  FILTRADO SEGURO con useMemo (evita errores de null y optimiza rendimiento)
+  const filteredItems = useMemo(() => {
+    if (!items || items.length === 0) {
+      return [];
+    }
+
+    if (!searchTerm.trim()) {
+      return items;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    return items.filter(
+      (item) =>
+        item?.name?.toLowerCase()?.includes(term) ||
+        item?.barcode?.toLowerCase()?.includes(term)
+    );
+  }, [items, searchTerm]);
 
   const handleAdjustStock = async () => {
     if (!selectedBarcode) {
@@ -217,7 +228,7 @@ export default function InventoryPage() {
                 ))
               )}
             </tbody>
-          </table>
+           </table>
         </div>
       </div>
 

@@ -26,6 +26,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -59,12 +60,25 @@ export default function ProductsPage() {
     fetchData();
   }, [fetchData]);
 
-  // Filtrar productos por nombre o código de barras
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.barcode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar productos por nombre o código de barras (CORREGIDO)
+  useEffect(() => {
+    if (!products || products.length === 0) {
+      setFilteredProducts([]);
+      return;
+    }
+
+    if (!searchTerm.trim()) {
+      setFilteredProducts(products);
+      return;
+    }
+
+    const filtered = products.filter(
+      (product) =>
+        product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product?.barcode?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredProducts(filtered);
+  }, [products, searchTerm]);
 
   const openCreateModal = () => {
     setEditingProduct(null);
@@ -190,7 +204,7 @@ export default function ProductsPage() {
                 <tr>
                   <td colSpan={7} className="border p-2 text-center text-gray-500">
                     No se encontraron productos
-                  </td>
+                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((p) => (
