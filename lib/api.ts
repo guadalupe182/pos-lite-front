@@ -1,14 +1,55 @@
-// lib/api.ts
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com';
 
-// Guardar token después del login
+// ==================== TIPOS ====================
+export interface CashSession {
+  id: number;
+  openedAt: string;
+  closedAt: string | null;
+  initialCash: number;
+  expectedCash: number | null;
+  actualCash: number | null;
+  difference: number | null;
+  status: 'OPEN' | 'CLOSED';
+  openedBy: string;
+}
+
+// Nuevo DTO con desglose detallado
+export interface CashCloseReportDto {
+  id: number;
+  closureDate: string;
+  initialCash: number;
+  finalCash: number;
+  expectedCash: number;
+  difference: number;
+  closedBy: string;
+  closedAt: string;
+  totalCashSales: number;
+  totalCardSales: number;
+  cardBreakdown: Record<string, number>; // { "DEBIT": 100, "CREDIT_3MSI": 200, ... }
+  totalMercadoPagoSales: number;
+  totalSales: number;
+}
+
+export interface CurrentSessionDto {
+  id: number;
+  initialCash: number;
+  status: string;
+  openedAt: string;
+  openedBy: string;
+}
+
+export interface DailySummaryDto {
+  totalSales: number;
+  totalTransactions: number;
+}
+
+// ==================== AUTH ====================
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('access_token', token);
   }
 }
 
-// Obtener token
 export function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
     return sessionStorage.getItem('access_token');
@@ -16,7 +57,6 @@ export function getAuthToken(): string | null {
   return null;
 }
 
-// Eliminar token (logout)
 export function removeAuthToken() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('access_token');
@@ -26,7 +66,7 @@ export function removeAuthToken() {
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
   const url = `${API_BASE}${endpoint}`;
   const token = getAuthToken();
-  
+
   let headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -44,14 +84,14 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
       headers = { ...headers, ...options.headers as Record<string, string> };
     }
   }
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'omit', // Ya no usamos cookies
+    credentials: 'omit',
     headers,
   });
 
@@ -74,18 +114,36 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
 }
 
 // ==================== CAJA ====================
-
-export async function getDailySummary() {
+export async function getDailySummary(): Promise<DailySummaryDto> {
   return apiFetch('/api/cash/daily-summary', { method: 'GET' }).then(res => res.json());
 }
 
-export async function closeCash(initialCash: number, finalCash: number) {
+export async function closeCash(finalCash: number): Promise<CashCloseReportDto> {
   return apiFetch('/api/cash/close', {
     method: 'POST',
-    body: JSON.stringify({ initialCash, finalCash }),
+    body: JSON.stringify({ finalCash }),
   }).then(res => res.json());
 }
 
-export async function isCashClosedToday() {
+export async function isCashClosedToday(): Promise<boolean> {
   return apiFetch('/api/cash/is-closed', { method: 'GET' }).then(res => res.json());
+}
+
+export async function openCash(initialCash: number): Promise<CashSession> {
+  return apiFetch('/api/cash/open', {
+    method: 'POST',
+    body: JSON.stringify({ initialCash }),
+  }).then(res => res.json());
+}
+
+export async function getCurrentCashSession(): Promise<CurrentSessionDto | null> {
+  return apiFetch('/api/cash/current-session', {
+    method: 'GET',
+  }).then(res => res.json());
+}
+
+export async function isCashOpen(): Promise<boolean> {
+  return apiFetch('/api/cash/is-open', {
+    method: 'GET',
+  }).then(res => res.json());
 }
