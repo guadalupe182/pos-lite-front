@@ -72,3 +72,20 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
   }
   return response;
 }
+
+// ==================== CAJA ====================
+
+export async function getDailySummary() {
+  return apiFetch('/api/cash/daily-summary', { method: 'GET' }).then(res => res.json());
+}
+
+export async function closeCash(initialCash: number, finalCash: number) {
+  return apiFetch('/api/cash/close', {
+    method: 'POST',
+    body: JSON.stringify({ initialCash, finalCash }),
+  }).then(res => res.json());
+}
+
+export async function isCashClosedToday() {
+  return apiFetch('/api/cash/is-closed', { method: 'GET' }).then(res => res.json());
+}
