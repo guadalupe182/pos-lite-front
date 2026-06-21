@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import QrScanner from '@/components/QrScanner';
+import { useCash } from '@/contexts/CashContext';
 
 type CartItem = {
   productId: number;
@@ -22,6 +23,7 @@ type Category = {
 
 export default function SalesPage() {
   const router = useRouter();
+  const { isOpen, loading: cashLoading } = useCash();
   const [barcode, setBarcode] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,35 @@ export default function SalesPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
+
+  // Bloqueo si caja cerrada
+  if (cashLoading) {
+    return (
+      <>
+        <Navbar />
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500">Cargando estado de caja...</div>
+        </div>
+      </>
+    );
+  }
+
+  if (!isOpen) {
+    return (
+      <>
+        <Navbar />
+        <div className="p-4 md:p-8 max-w-4xl mx-auto text-center">
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg">
+            <div className="text-4xl mb-4">🔒</div>
+            <h2 className="text-xl font-semibold text-gray-700">Caja cerrada</h2>
+            <p className="text-gray-500 mt-2">
+              Para realizar ventas, debes abrir la caja desde el botón en la barra de navegación.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // Cargar carrito desde localStorage al iniciar
   useEffect(() => {

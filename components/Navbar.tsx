@@ -8,6 +8,7 @@ import { useCash } from '@/contexts/CashContext';
 import CashStatusBadge from './CashStatusBadge';
 import OpenCashModal from './OpenCashModal';
 import CloseCashModal from './CloseCashModal';
+import NotificationBell from './NotificationBell'; 
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -81,6 +82,9 @@ export default function Navbar() {
                 {loading ? '...' : isOpen ? 'Cerrar caja' : 'Abrir caja'}
               </button>
 
+              {/* 🔔 Campana de notificaciones */}
+              <NotificationBell />
+
               <button
                 onClick={handleLogout}
                 className="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-md text-sm font-medium"
@@ -126,6 +130,9 @@ export default function Navbar() {
                 >
                   {isOpen ? 'Cerrar' : 'Abrir'}
                 </button>
+              </div>
+              <div className="px-3 py-2">
+                <NotificationBell />
               </div>
               <button
                 onClick={handleLogout}

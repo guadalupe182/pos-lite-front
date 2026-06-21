@@ -13,7 +13,6 @@ export interface CashSession {
   openedBy: string;
 }
 
-// Nuevo DTO con desglose detallado
 export interface CashCloseReportDto {
   id: number;
   closureDate: string;
@@ -25,7 +24,7 @@ export interface CashCloseReportDto {
   closedAt: string;
   totalCashSales: number;
   totalCardSales: number;
-  cardBreakdown: Record<string, number>; // { "DEBIT": 100, "CREDIT_3MSI": 200, ... }
+  cardBreakdown: Record<string, number>;
   totalMercadoPagoSales: number;
   totalSales: number;
 }
@@ -146,4 +145,31 @@ export async function isCashOpen(): Promise<boolean> {
   return apiFetch('/api/cash/is-open', {
     method: 'GET',
   }).then(res => res.json());
+}
+
+// ==================== NOTIFICACIONES ====================
+
+export interface Notification {
+  id: number;
+  type: 'STOCK_LOW' | 'CASH_LOW';
+  message: string;
+  createdAt: string;
+  read: boolean;
+  userId: string;
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+  return apiFetch('/api/notifications', { method: 'GET' }).then(res => res.json());
+}
+
+export async function getUnreadNotifications(): Promise<Notification[]> {
+  return apiFetch('/api/notifications/unread', { method: 'GET' }).then(res => res.json());
+}
+
+export async function markNotificationAsRead(id: number): Promise<void> {
+  return apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' }).then(res => res.json());
+}
+
+export async function deleteNotification(id: number): Promise<void> {
+  return apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res => res.json());
 }
