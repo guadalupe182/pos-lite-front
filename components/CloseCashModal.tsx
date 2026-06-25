@@ -11,31 +11,43 @@ interface CloseCashModalProps {
 }
 
 export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCashModalProps) {
-  const [finalCash, setFinalCash] = useState<number>(0);
+  // 👇 Estado como string para manejar entrada de texto
+  const [finalCash, setFinalCash] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<CashCloseReportDto | null>(null);
   const [step, setStep] = useState<'confirm' | 'summary'>('confirm');
-  const [dailyTotalSales, setDailyTotalSales] = useState<number>(0);
-  const { session, closeCash } = useCash();
+  const [dailyTotalSales, setDailyTotalSales] = useState<number>(0); // 👈 número, no string
+  const { session, closeCash, refresh } = useCash();
 
-  // Cargar resumen del día al abrir el modal
   useEffect(() => {
     if (isOpen) {
       setStep('confirm');
       setSummary(null);
-      setFinalCash(0);
+      setFinalCash('');
       setError(null);
-      // Obtener ventas totales del día (para mostrar en el paso de confirmación)
       getDailySummary()
         .then(data => setDailyTotalSales(data.totalSales || 0))
         .catch(() => setDailyTotalSales(0));
     }
   }, [isOpen]);
 
+  // Función para convertir string a número (elimina comas)
+  const parseCashValue = (value: string): number => {
+    const cleaned = value.replace(/,/g, '');
+    return parseFloat(cleaned) || 0;
+  };
+
+  // Handler para input (solo dígitos, punto y coma)
+  const handleCashChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const filtered = raw.replace(/[^0-9.,]/g, '');
+    setFinalCash(filtered);
+  };
+
   if (!isOpen) return null;
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN',
@@ -47,18 +59,31 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
     e.preventDefault();
     setError(null);
 
-    if (finalCash < 0) {
+    const cashAmount = parseCashValue(finalCash);
+    if (cashAmount < 0) {
       setError('El monto final no puede ser negativo');
       return;
     }
 
     try {
       setLoading(true);
-      const result = await closeCash(finalCash);
+      const result = await closeCash(cashAmount);
       setSummary(result);
       setStep('summary');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cerrar la caja');
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Error al cerrar la caja';
+      
+      // Sincronización forzada para errores de estado
+      if (
+        errorMessage.includes('ya fue cerrada') ||
+        errorMessage.includes('No hay sesión')
+      ) {
+        await refresh();
+        onClose();
+        return;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -68,11 +93,10 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
     onSuccess();
   };
 
-  // === Paso de confirmación (antes de cerrar) ===
+  // === Paso de confirmación ===
   if (step === 'confirm') {
     const initialCash = session?.initialCash || 0;
-    // El esperado se calculará al cerrar, pero mostramos un aproximado si tenemos total de ventas
-    const approximateExpected = initialCash + dailyTotalSales; // asumiendo que todas son en efectivo (no es exacto)
+    const approximateExpected = initialCash + dailyTotalSales;
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -84,7 +108,6 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
             </button>
           </div>
 
-          {/* Resumen rápido del día */}
           <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-2 text-sm">
             <h3 className="font-medium text-gray-700">Resumen del día</h3>
             <div className="grid grid-cols-2 gap-1">
@@ -111,11 +134,11 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
                   id="finalCash"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9.,]*"
                   value={finalCash}
-                  onChange={(e) => setFinalCash(parseFloat(e.target.value) || 0)}
+                  onChange={handleCashChange}
                   className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   placeholder="0.00"
                   required
@@ -157,7 +180,7 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
     );
   }
 
-  // === Paso de resumen (después del cierre) ===
+  // === Paso de resumen ===
   if (step === 'summary' && summary) {
     const isOver = summary.difference > 0;
     const isShort = summary.difference < 0;
@@ -200,7 +223,6 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
             </p>
           </div>
 
-          {/* Datos del cierre */}
           <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
             <div className="grid grid-cols-2 gap-1">
               <span className="text-gray-500">Monto inicial:</span>
@@ -222,23 +244,17 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
             </div>
           </div>
 
-          {/* Desglose de ventas por método de pago */}
           <div className="mt-4 border-t pt-4">
             <h4 className="font-medium text-gray-700 mb-2">Desglose de ventas</h4>
             <div className="grid grid-cols-2 gap-1 text-sm">
               <span className="text-gray-500">Total ventas:</span>
               <span className="font-bold text-right">{formatCurrency(summary.totalSales)}</span>
-
               <span className="text-gray-500">Efectivo:</span>
               <span className="font-medium text-right">{formatCurrency(summary.totalCashSales)}</span>
-
               <span className="text-gray-500">Mercado Pago:</span>
               <span className="font-medium text-right">{formatCurrency(summary.totalMercadoPagoSales)}</span>
-
               <span className="text-gray-500 border-t pt-1">Tarjeta (total):</span>
               <span className="font-medium text-right border-t pt-1">{formatCurrency(summary.totalCardSales)}</span>
-
-              {/* Desglose por tipo de tarjeta */}
               {summary.cardBreakdown && Object.entries(summary.cardBreakdown).map(([method, amount]) => (
                 <React.Fragment key={method}>
                   <span className="text-gray-500 pl-4">- {method}:</span>
@@ -262,4 +278,4 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
   }
 
   return null;
-} 
+}

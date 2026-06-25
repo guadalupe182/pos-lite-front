@@ -10,25 +10,39 @@ interface OpenCashModalProps {
 }
 
 export default function OpenCashModal({ isOpen, onClose, onSuccess }: OpenCashModalProps) {
-  const [initialCash, setInitialCash] = useState<number>(0);
+  const [initialCash, setInitialCash] = useState<string>(''); // 👈 Cambio a string
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { openCash } = useCash();
 
   if (!isOpen) return null;
 
+  // Convertir string a número (manejando comas y puntos)
+  const parseCashValue = (value: string): number => {
+    const cleaned = value.replace(/,/g, ''); // eliminar comas
+    return parseFloat(cleaned) || 0;
+  };
+
+  const handleCashChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Permitir solo dígitos, punto y coma (para decimales)
+    const filtered = raw.replace(/[^0-9.,]/g, '');
+    setInitialCash(filtered);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (initialCash < 0) {
+    const cashAmount = parseCashValue(initialCash);
+    if (cashAmount < 0) {
       setError('El monto inicial no puede ser negativo');
       return;
     }
 
     try {
       setLoading(true);
-      await openCash(initialCash);
+      await openCash(cashAmount);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al abrir la caja');
@@ -60,11 +74,11 @@ export default function OpenCashModal({ isOpen, onClose, onSuccess }: OpenCashMo
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <input
                 id="initialCash"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text" // 👈 Cambio a text
+                inputMode="decimal"
+                pattern="[0-9.,]*"
                 value={initialCash}
-                onChange={(e) => setInitialCash(parseFloat(e.target.value) || 0)}
+                onChange={handleCashChange}
                 className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 placeholder="0.00"
                 required
@@ -73,7 +87,7 @@ export default function OpenCashModal({ isOpen, onClose, onSuccess }: OpenCashMo
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Este es el efectivo que hay actualmente en la caja al momento de abrir.
+              Ingresa el efectivo que hay actualmente en la caja.
             </p>
           </div>
 
