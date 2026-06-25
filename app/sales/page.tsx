@@ -1,421 +1,242 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import Navbar from '@/components/Navbar';
-import QrScanner from '@/components/QrScanner';
-import { useCash } from '@/contexts/CashContext';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 
-type CartItem = {
-  productId: number;
-  barcode: string;
-  name: string;
-  price: number;
-  quantity: number;
-  subtotal: number;
-};
-
-type Category = {
+type Sale = {
   id: number;
-  name: string;
+  saleDate: string;
+  total: number;
+  paymentMethod: string;
+  items?: any[];
 };
 
-export default function SalesPage() {
-  const router = useRouter();
-  const { isOpen, loading: cashLoading } = useCash();
-  const [barcode, setBarcode] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [scannerKey, setScannerKey] = useState(0);
+export default function SalesReportPage() {
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    return date.toISOString().split('T')[0];
+  });
+  const [toDate, setToDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day');
 
-  // Bloqueo si caja cerrada
-  if (cashLoading) {
-    return (
-      <>
-        <Navbar />
-        <div className="flex justify-center items-center h-64">
-          <div className="text-gray-500">Cargando estado de caja...</div>
-        </div>
-      </>
-    );
-  }
-
-  if (!isOpen) {
-    return (
-      <>
-        <Navbar />
-        <div className="p-4 md:p-8 max-w-4xl mx-auto text-center">
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg">
-            <div className="text-4xl mb-4">🔒</div>
-            <h2 className="text-xl font-semibold text-gray-700">Caja cerrada</h2>
-            <p className="text-gray-500 mt-2">
-              Para realizar ventas, debes abrir la caja desde el botón en la barra de navegación.
-            </p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // Cargar carrito desde localStorage al iniciar
-  useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
-        console.log('🔄 Carrito cargado desde localStorage:', parsedCart);
-      } catch (e) {
-        console.error('Error al cargar carrito:', e);
-      }
-    }
-  }, []);
-
-  const fetchProductByBarcode = useCallback(async (code: string) => {
+  const fetchSales = async () => {
     try {
-      const res = await apiFetch(`/api/products/barcode/${encodeURIComponent(code)}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      return null;
-    }
-  }, []);
-
-  const createProductAndAddToCart = useCallback(async (barcode: string) => {
-    const existingProduct = await fetchProductByBarcode(barcode);
-    if (existingProduct && existingProduct.id) {
-      setMessage({
-        type: "error",
-        text: `El código ${barcode} ya existe. Usa el producto existente`,
-      });
-      return false;
-    }
-
-    const name = prompt("Producto no encontrado. Ingrese el nombre:");
-    if (!name) return false;
-
-    const priceStr = prompt("Ingrese el precio:");
-    const price = parseFloat(priceStr || "0");
-    if (isNaN(price) || price <= 0) {
-      alert("Precio inválido");
-      return false;
-    }
-
-    let categories: Category[] = [];
-    let categoryId = 1;
-
-    try {
-      const res = await apiFetch("/api/categories");
-      categories = await res.json();
-
-      if (categories && categories.length > 0) {
-        const categoryList = categories
-          .map((c, idx) => `${idx + 1}. ${c.name}`)
-          .join("\n");
-        const selected = prompt(
-          `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
-          "1",
-        );
-
-        const num = parseInt(selected || "1", 10);
-
-        if (num === 0) {
-          const newCategoryName = prompt("Ingrese el nombre de la nueva categoría:");
-          if (newCategoryName && newCategoryName.trim()) {
-            try {
-              const createRes = await apiFetch("/api/categories", {
-                method: "POST",
-                body: JSON.stringify({ name: newCategoryName.trim() }),
-              });
-              if (createRes.ok) {
-                const newCategory = await createRes.json();
-                categoryId = newCategory.id;
-              } else {
-                alert("Error al crear categoría, se usará la categoría por defecto");
-              }
-            } catch {
-              alert("Error al crear categoría, se usará la categoría por defecto");
-            }
-          }
-        } else if (num >= 1 && num <= categories.length) {
-          categoryId = categories[num - 1].id;
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-
-    const minStockStr = prompt("Stock mínimo (opcional, presione Enter para 0):", "0");
-    const minStock = parseInt(minStockStr || "0", 10) || 0;
-
-    const quantityStr = prompt("¿Cuántas unidades deseas agregar al carrito?", "1");
-    const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
-
-    const payload = {
-      barcode,
-      delta: initialQuantity,
-      reason: "INBOUND",
-      name,
-      price,
-      minStock,
-      categoryId,
-    };
-
-    try {
-      const res = await apiFetch("/api/products/adjust-by-barcode", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const product = await res.json();
-        setCart((prev) => {
-          const newCart = [...prev, {
-            productId: product.id,
-            barcode: product.barcode,
-            name: product.name,
-            price: product.price,
-            quantity: initialQuantity,
-            subtotal: product.price * initialQuantity,
-          }];
-          localStorage.setItem('cart', JSON.stringify(newCart));
-          console.log('🟢 Nuevo carrito después de crear producto:', newCart);
-          return newCart;
-        });
-        setMessage({
-          type: "success",
-          text: `Producto creado y agregado al carrito (${initialQuantity} unidad(es))`,
-        });
-        return true;
-      } else {
-        const error = await res.text();
-        setMessage({ type: "error", text: `Error al crear producto: ${error}` });
-        return false;
-      }
-    } catch {
-      setMessage({ type: "error", text: "Error de conexión al crear producto" });
-      return false;
-    }
-  }, [fetchProductByBarcode]);
-
-  const addToCart = useCallback(async (code: string) => {
-    if (!code.trim() || isProcessing) return;
-    setIsProcessing(true);
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const product = await fetchProductByBarcode(code);
-      if (!product) {
-        const created = await createProductAndAddToCart(code);
-        if (!created) {
-          setMessage({ type: "error", text: "No se pudo crear el producto" });
-        }
-        setLoading(false);
-        setIsProcessing(false);
-        return;
-      }
-
-      setCart((prev) => {
-        const existing = prev.find((item) => item.productId === product.id);
-        let newCart;
-        if (existing) {
-          newCart = prev.map((item) =>
-            item.productId === product.id
-              ? {
-                  ...item,
-                  quantity: item.quantity + 1,
-                  subtotal: (item.quantity + 1) * item.price,
-                }
-              : item
-          );
-        } else {
-          newCart = [...prev, {
-            productId: product.id,
-            barcode: product.barcode,
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-            subtotal: product.price,
-          }];
-        }
-        localStorage.setItem('cart', JSON.stringify(newCart));
-        console.log('🟡 Nuevo carrito después de agregar producto:', newCart);
-        return newCart;
-      });
-      setBarcode("");
-    } catch {
-      setMessage({ type: "error", text: "Error al buscar producto" });
+      setLoading(true);
+      setError(null);
+      const from = new Date(fromDate).toISOString();
+      const to = new Date(toDate + 'T23:59:59').toISOString();
+      const res = await apiFetch(`/api/sales/report?from=${from}&to=${to}`);
+      if (!res.ok) throw new Error('Error al obtener ventas');
+      const data = await res.json();
+      setSales(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar ventas');
     } finally {
       setLoading(false);
-      setIsProcessing(false);
     }
-  }, [fetchProductByBarcode, createProductAndAddToCart, isProcessing]);
+  };
 
-  const removeFromCart = (productId: number) => {
-    setCart((prev) => {
-      const newCart = prev.filter((item) => item.productId !== productId);
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      return newCart;
+  useEffect(() => {
+    fetchSales();
+  }, [fromDate, toDate]);
+
+  const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Intl.DateTimeFormat('es-MX', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(dateString));
+  };
+
+  // Agrupar ventas por día, semana o mes
+  const getGroupedSales = () => {
+    const groups: { [key: string]: Sale[] } = {};
+    sales.forEach((sale) => {
+      const date = new Date(sale.saleDate);
+      let key: string;
+      switch (groupBy) {
+        case 'day':
+          key = date.toISOString().split('T')[0];
+          break;
+        case 'week':
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay());
+          key = weekStart.toISOString().split('T')[0];
+          break;
+        case 'month':
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(sale);
     });
+    return groups;
   };
 
-  const updateQuantity = (productId: number, newQty: number) => {
-    if (newQty <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prev) => {
-      const newCart = prev.map((item) =>
-        item.productId === productId
-          ? {
-              ...item,
-              quantity: newQty,
-              subtotal: newQty * item.price,
-            }
-          : item
-      );
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      return newCart;
-    });
-  };
-
-  const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
-
-  const handleOpenScanner = () => {
-    setScannerKey((prev) => prev + 1);
-    setScanning(true);
-  };
-
-  const handleCloseScanner = () => {
-    setScanning(false);
-  };
+  const groupedSales = getGroupedSales();
+  const groupKeys = Object.keys(groupedSales).sort();
 
   return (
     <>
       <Navbar />
-      <div className="p-4 md:p-8 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Registrar venta</h1>
+      <div className="p-4 md:p-8 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Reporte de ventas</h1>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-6">
-          <input
-            type="text"
-            placeholder="Código de barras"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addToCart(barcode)}
-            className="flex-1 p-2 border rounded text-gray-900"
-            disabled={loading || isProcessing}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => addToCart(barcode)}
-              disabled={loading || !barcode || isProcessing}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-            >
-              {loading ? "Buscando..." : "Agregar"}
-            </button>
-            <button
-              onClick={handleOpenScanner}
-              disabled={isProcessing}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
-            >
-              📷 Escanear
-            </button>
+        {/* Filtros */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div>
+              <label htmlFor="fromDate" className="block text-sm font-medium text-gray-700 mb-1">
+                Desde
+              </label>
+              <div className="relative">
+                <input
+                  id="fromDate"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="toDate" className="block text-sm font-medium text-gray-700 mb-1">
+                Hasta
+              </label>
+              <div className="relative">
+                <input
+                  id="toDate"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="groupBy" className="block text-sm font-medium text-gray-700 mb-1">
+                Agrupar por
+              </label>
+              <select
+                id="groupBy"
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              >
+                <option value="day">Día</option>
+                <option value="week">Semana</option>
+                <option value="month">Mes</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {message && (
-          <div className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-            {message.text}
+        {/* Estadísticas rápidas */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Total ventas</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(totalSales)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Número de ventas</p>
+              <p className="text-xl font-bold text-gray-800">{sales.length}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Promedio por venta</p>
+              <p className="text-xl font-bold text-gray-800">
+                {sales.length > 0 ? formatCurrency(totalSales / sales.length) : '$0.00'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Período</p>
+              <p className="text-xl font-bold text-gray-800">
+                {fromDate} → {toDate}
+              </p>
+            </div>
           </div>
-        )}
+        </div>
 
-        {cart.length > 0 && (
-          <>
-            <div className="overflow-x-auto mb-4">
-              <table className="min-w-full bg-white border">
-                <thead>
+        {/* Tabla de ventas */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">Cargando reporte...</div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        ) : sales.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <p className="text-gray-500">No hay ventas en el período seleccionado.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="border p-2 text-gray-900">Producto</th>
-                    <th className="border p-2 text-gray-900">Precio</th>
-                    <th className="border p-2 text-gray-900">Cantidad</th>
-                    <th className="border p-2 text-gray-900">Subtotal</th>
-                    <th className="border p-2 text-gray-900"></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID Venta
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fecha
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Método de pago
+                    </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {cart.map((item) => (
-                    <tr key={item.productId}>
-                      <td className="border p-2 text-gray-900">{item.name}</td>
-                      <td className="border p-2 text-gray-900">${item.price.toFixed(2)}</td>
-                      <td className="border p-2 text-gray-900">
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
-                          className="w-20 p-1 border rounded text-center text-gray-900"
-                        />
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sales.map((sale) => (
+                    <tr key={sale.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm text-gray-900">{sale.id}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{formatDate(sale.saleDate)}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {formatCurrency(sale.total)}
                       </td>
-                      <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
-                      <td className="border p-2 text-gray-900">
-                        <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700">
-                          Eliminar
-                        </button>
-                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{sale.paymentMethod}</td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
+                <tfoot className="bg-gray-50">
                   <tr>
-                    <td colSpan={3} className="border p-2 text-right font-bold text-gray-900">Total</td>
-                    <td className="border p-2 font-bold text-gray-900">${total.toFixed(2)}</td>
-                    <td className="border p-2"></td>
+                    <td colSpan={2} className="px-6 py-3 text-right text-sm font-medium text-gray-700">
+                      Total general:
+                    </td>
+                    <td className="px-6 py-3 text-sm font-bold text-gray-900">
+                      {formatCurrency(totalSales)}
+                    </td>
+                    <td className="px-6 py-3"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-            <button
-              onClick={() => {
-                localStorage.setItem('cart', JSON.stringify(cart));
-                router.push('/checkout');
-              }}
-              disabled={cart.length === 0}
-              className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
-            >
-              Ir a pagar
-            </button>
-          </>
+          </div>
         )}
       </div>
-
-      {scanning && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-md">
-            <div className="flex justify-between mb-2">
-              <h2 className="text-lg font-bold">Escanea el código de barras</h2>
-              <button onClick={handleCloseScanner} className="text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-            <QrScanner
-              key={scannerKey}
-              onScan={(result) => {
-                if (result) {
-                  addToCart(result);
-                  handleCloseScanner();
-                }
-              }}
-              onError={(err) => console.error("Scanner error:", err)}
-              facingMode="environment"
-            />
-            <p className="text-sm text-gray-500 mt-2 text-center">Apunta la cámara al código de barras</p>
-          </div>
-        </div>
-      )}
     </>
   );
 }
