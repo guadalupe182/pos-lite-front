@@ -262,4 +262,4 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
   }
 
   return null;
-}
+} 
