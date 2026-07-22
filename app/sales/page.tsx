@@ -30,13 +30,15 @@ export default function SalesPage() {
   const [scanning, setScanning] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
 
-  // Cargar carrito desde localStorage al iniciar
+  // Cargar carrito desde localStorage al iniciar (sin activar set-state-in-effect)
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
+        if (Array.isArray(parsedCart)) {
+          setTimeout(() => setCart(parsedCart), 0);
+        }
       } catch (e) {
         console.error('Error al cargar carrito:', e);
       }
@@ -54,12 +56,12 @@ export default function SalesPage() {
     }
   }, []);
 
-  const createProductAndAddToCart = useCallback(async (barcode: string) => {
-    const existingProduct = await fetchProductByBarcode(barcode);
+  const createProductAndAddToCart = useCallback(async (barcodeStr: string) => {
+    const existingProduct = await fetchProductByBarcode(barcodeStr);
     if (existingProduct && existingProduct.id) {
       setMessage({
         type: "error",
-        text: `El código ${barcode} ya existe. Usa el producto existente`,
+        text: `El código ${barcodeStr} ya existe. Usa el producto existente`,
       });
       return false;
     }
@@ -125,7 +127,7 @@ export default function SalesPage() {
     const initialQuantity = parseInt(quantityStr || "1", 10) || 1;
 
     const payload = {
-      barcode,
+      barcode: barcodeStr,
       delta: initialQuantity,
       reason: "INBOUND",
       name,
@@ -222,6 +224,26 @@ export default function SalesPage() {
     }
   }, [fetchProductByBarcode, createProductAndAddToCart, isProcessing]);
 
+  // Atajo directo para demo sin prompts ni alertas
+  const addQuickDemoItem = (id: number, barcodeStr: string, name: string, price: number) => {
+    setMessage(null);
+    setCart((prev) => {
+      const existing = prev.find((item) => item.productId === id);
+      let newCart;
+      if (existing) {
+        newCart = prev.map((item) =>
+            item.productId === id
+                ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
+                : item
+        );
+      } else {
+        newCart = [...prev, { productId: id, barcode: barcodeStr, name, price, quantity: 1, subtotal: price }];
+      }
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
   const removeFromCart = (productId: number) => {
     setCart((prev) => {
       const newCart = prev.filter((item) => item.productId !== productId);
@@ -230,35 +252,13 @@ export default function SalesPage() {
     });
   };
 
-  const updateQuantity = (productId: number, newQty: number) => {
-    if (newQty <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prev) => {
-      const newCart = prev.map((item) =>
-          item.productId === productId
-              ? {
-                ...item,
-                quantity: newQty,
-                subtotal: newQty * item.price,
-              }
-              : item
-      );
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      return newCart;
-    });
-  };
-
   const clearCart = () => {
-    if (confirm("¿Estás seguro de cancelar esta venta y vaciar el carrito?")) {
+    if (confirm("¿Cancelar esta venta y vaciar la orden?")) {
       setCart([]);
       localStorage.removeItem('cart');
-      setMessage({ type: 'success', text: 'Venta cancelada. Se vació el carrito.' });
+      setMessage({ type: 'success', text: 'Venta cancelada.' });
     }
   };
-
-  const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
   const handleOpenScanner = () => {
     setScannerKey((prev) => prev + 1);
@@ -269,157 +269,163 @@ export default function SalesPage() {
     setScanning(false);
   };
 
-  return (
-      <>
-        <Navbar />
-        <div className="p-4 md:p-8 max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Registrar venta</h1>
+  const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
-          {/* ⚡ Atajos de prueba rápida para la Demo */}
-          <div className="mb-6 p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-left shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-              🚀 Carga Rápida Demo (Prueba con 1 Clic)
+  return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <Navbar />
+
+        <main className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+
+          {/* Header con Badge Enterprise GDEV */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-5">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 uppercase tracking-wide mb-1">
+                🛡️ GDEV SaaS Omnicanal
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Terminal de Punto de Venta</h1>
+            </div>
+            <div className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs font-mono">
+              Estado: <span className="text-emerald-600 font-bold">● En Línea</span>
+            </div>
+          </div>
+
+          {/* Tarjeta de Atajos Rápidos */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-sky-700 uppercase tracking-wider">
+              ⚡ Catálogo Demo Rápido
             </span>
-              <span className="text-[10px] bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded">
-              Atajos
+              <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-md">
+              1-Click Add
             </span>
             </div>
-            <p className="text-xs text-gray-600 mb-2.5">
-              Haz clic en cualquiera de estos botones para probar la adición instantánea al carrito:
-            </p>
             <div className="flex flex-wrap gap-2">
               <button
-                  type="button"
-                  onClick={() => addToCart("123456")}
-                  disabled={loading || isProcessing}
-                  className="text-xs font-medium bg-white hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-300 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                  onClick={() => addQuickDemoItem(9991, "123456", "Mouse Inalámbrico GDEV", 1200)}
+                  className="text-xs font-semibold bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-sky-300 transition-all cursor-pointer"
               >
-                + Agregar Mouse (Cód: 123456)
+                + Mouse Inalámbrico ($1,200)
               </button>
               <button
-                  type="button"
-                  onClick={() => addToCart("789012")}
-                  disabled={loading || isProcessing}
-                  className="text-xs font-medium bg-white hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-300 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                  onClick={() => addQuickDemoItem(9992, "789012", "Teclado Mecánico RGB", 850)}
+                  className="text-xs font-semibold bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-sky-300 transition-all cursor-pointer"
               >
-                + Agregar Teclado (Cód: 789012)
+                + Teclado Mecánico ($850)
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 mb-6">
-            <input
-                type="text"
-                placeholder="Código de barras (ej. 123456)"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addToCart(barcode)}
-                className="flex-1 p-2 border rounded text-gray-900 bg-white"
-                disabled={loading || isProcessing}
-            />
-            <div className="flex gap-2">
-              <button
-                  onClick={() => addToCart(barcode)}
-                  disabled={loading || !barcode || isProcessing}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? "Buscando..." : "Agregar"}
-              </button>
-              <button
-                  onClick={handleOpenScanner}
-                  disabled={isProcessing}
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 cursor-pointer"
-              >
-                📷 Escanear
-              </button>
+          {/* Buscador de Código de Barras / Scanner */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                  type="text"
+                  placeholder="Escribe o escanea un código de barras..."
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addToCart(barcode)}
+                  className="flex-1 p-3 border border-slate-200 rounded-xl text-slate-900 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  disabled={loading || isProcessing}
+              />
+              <div className="flex gap-2">
+                <button
+                    onClick={() => addToCart(barcode)}
+                    disabled={loading || !barcode || isProcessing}
+                    className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-3 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
+                >
+                  {loading ? "Buscando..." : "Agregar"}
+                </button>
+                <button
+                    onClick={handleOpenScanner}
+                    disabled={isProcessing}
+                    className="bg-[#090d16] hover:bg-slate-800 text-white px-5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
+                >
+                  📷 Escanear
+                </button>
+              </div>
             </div>
           </div>
 
           {message && (
-              <div className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              <div className={`p-3.5 rounded-xl text-sm border font-medium ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"}`}>
                 {message.text}
               </div>
           )}
 
-          {cart.length > 0 && (
-              <>
-                <div className="overflow-x-auto mb-6">
-                  <table className="min-w-full bg-white border">
-                    <thead>
-                    <tr>
-                      <th className="border p-2 text-gray-900">Producto</th>
-                      <th className="border p-2 text-gray-900">Precio</th>
-                      <th className="border p-2 text-gray-900">Cantidad</th>
-                      <th className="border p-2 text-gray-900">Subtotal</th>
-                      <th className="border p-2 text-gray-900"></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {cart.map((item) => (
-                        <tr key={item.productId}>
-                          <td className="border p-2 text-gray-900">{item.name}</td>
-                          <td className="border p-2 text-gray-900">${item.price.toFixed(2)}</td>
-                          <td className="border p-2 text-gray-900">
-                            <input
-                                type="number"
-                                min="1"
-                                value={item.quantity}
-                                onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
-                                className="w-20 p-1 border rounded text-center text-gray-900"
-                            />
-                          </td>
-                          <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
-                          <td className="border p-2 text-gray-900">
-                            <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700 cursor-pointer text-sm">
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                    ))}
-                    </tbody>
-                    <tfoot>
-                    <tr>
-                      <td colSpan={3} className="border p-2 text-right font-bold text-gray-900">Total</td>
-                      <td className="border p-2 font-bold text-gray-900">${total.toFixed(2)}</td>
-                      <td className="border p-2"></td>
-                    </tr>
-                    </tfoot>
-                  </table>
-                </div>
+          {/* Tabla del Carrito */}
+          {cart.length > 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                <table className="w-full text-left text-sm text-slate-700">
+                  <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                  <tr>
+                    <th className="p-4">Producto</th>
+                    <th className="p-4">Precio</th>
+                    <th className="p-4 text-center">Cant.</th>
+                    <th className="p-4 text-right">Subtotal</th>
+                    <th className="p-4 text-center"></th>
+                  </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                  {cart.map((item) => (
+                      <tr key={item.productId} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-4 font-semibold text-slate-900">{item.name}</td>
+                        <td className="p-4 text-slate-600">${item.price.toFixed(2)}</td>
+                        <td className="p-4 text-center font-bold text-slate-800">{item.quantity}</td>
+                        <td className="p-4 text-right font-bold text-slate-900">${item.subtotal.toFixed(2)}</td>
+                        <td className="p-4 text-center">
+                          <button
+                              onClick={() => removeFromCart(item.productId)}
+                              className="text-rose-600 hover:text-rose-700 text-xs font-bold cursor-pointer"
+                          >
+                            Quitar
+                          </button>
+                        </td>
+                      </tr>
+                  ))}
+                  </tbody>
+                </table>
 
-                {/* 🔘 Acciones de Venta (Cancelar / Ir a pagar) */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                      type="button"
-                      onClick={clearCart}
-                      className="w-full sm:w-1/3 bg-red-100 hover:bg-red-200 text-red-700 font-medium p-2.5 rounded-lg border border-red-300 transition-colors cursor-pointer text-sm"
-                  >
-                    🚫 Cancelar venta
-                  </button>
-
-                  <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.setItem('cart', JSON.stringify(cart));
-                        router.push('/checkout');
-                      }}
-                      disabled={cart.length === 0}
-                      className="w-full sm:w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-medium p-2.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer text-sm shadow-sm"
-                  >
-                    Ir a pagar (${total.toFixed(2)})
-                  </button>
+                {/* Total y Checkout */}
+                <div className="p-5 bg-slate-50/60 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Orden</span>
+                    <span className="text-3xl font-black text-slate-900">${total.toFixed(2)} <span className="text-xs font-normal text-slate-500">MXN</span></span>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                        onClick={clearCart}
+                        className="px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 text-rose-600 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                        onClick={() => router.push('/checkout')}
+                        className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition-all cursor-pointer shadow-md shadow-sky-600/20"
+                    >
+                      Procesar Cobro →
+                    </button>
+                  </div>
                 </div>
-              </>
+              </div>
+          ) : (
+              <div className="bg-white p-12 text-center rounded-2xl border border-slate-200/90 shadow-2xs">
+                <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+                  🛒
+                </div>
+                <p className="text-sm font-semibold text-slate-700">El carrito de compras está vacío</p>
+                <p className="text-xs text-slate-400 mt-1">Usa los botones del catálogo demo o escanea un código para comenzar.</p>
+              </div>
           )}
-        </div>
+        </main>
 
+        {/* Modal Scanner */}
         {scanning && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-4 w-full max-w-md">
-                <div className="flex justify-between mb-2">
-                  <h2 className="text-lg font-bold text-gray-900">Escanea el código de barras</h2>
-                  <button onClick={handleCloseScanner} className="text-gray-500 hover:text-gray-700 cursor-pointer">✕</button>
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-xl border border-slate-200">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-base font-bold text-slate-900">Escanea el código de barras</h2>
+                  <button onClick={handleCloseScanner} className="text-slate-400 hover:text-slate-600 cursor-pointer text-lg font-bold">✕</button>
                 </div>
                 <QrScanner
                     key={scannerKey}
@@ -432,10 +438,10 @@ export default function SalesPage() {
                     onError={(err) => console.error("Scanner error:", err)}
                     facingMode="environment"
                 />
-                <p className="text-sm text-gray-500 mt-2 text-center">Apunta la cámara al código de barras</p>
+                <p className="text-xs text-slate-500 mt-3 text-center">Apunta la cámara al código de barras del producto</p>
               </div>
             </div>
         )}
-      </>
+      </div>
   );
 }

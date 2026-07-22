@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
 import { useState, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import Navbar from "@/components/Navbar";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
@@ -19,12 +19,12 @@ import {
 import { Bar } from "react-chartjs-2";
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
 );
 
 type Sale = {
@@ -46,7 +46,7 @@ export default function SalesReportPage() {
     return date.toISOString().split("T")[0];
   });
   const [toDate, setToDate] = useState(
-    () => new Date().toISOString().split("T")[0],
+      () => new Date().toISOString().split("T")[0],
   );
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,9 +65,9 @@ export default function SalesReportPage() {
     try {
       const res = await apiFetch(`/api/sales/report?from=${from}&to=${to}`);
       const data = await res.json();
-      setSales(data);
+      setSales(Array.isArray(data) ? data : []);
     } catch {
-      setError("Error al cargar el reporte");
+      setError("Error al cargar el reporte de ventas");
     } finally {
       setLoading(false);
     }
@@ -102,13 +102,14 @@ export default function SalesReportPage() {
       datasets: [
         {
           label:
-            groupBy === "day"
-              ? "Ventas totales por día"
-              : "Ventas totales por mes",
+              groupBy === "day"
+                  ? "Ventas totales por día ($ MXN)"
+                  : "Ventas totales por mes ($ MXN)",
           data: Object.values(groups),
-          backgroundColor: "rgba(54, 162, 235, 0.6)",
-          borderColor: "rgba(54, 162, 235, 1)",
-          borderWidth: 1,
+          backgroundColor: "rgba(2, 132, 199, 0.75)", // Tone sky-600
+          borderColor: "rgba(2, 132, 199, 1)",
+          borderWidth: 1.5,
+          borderRadius: 8,
         },
       ],
     };
@@ -121,39 +122,55 @@ export default function SalesReportPage() {
       legend: { position: "top" as const },
       title: {
         display: true,
-        text: groupBy === "day" ? "Ventas diarias" : "Ventas mensuales",
+        text: groupBy === "day" ? "Comportamiento Diario de Ventas" : "Comportamiento Mensual de Ventas",
+        font: { size: 14, weight: 'bold' as const }
       },
     },
   };
 
   const totalGeneral = sales.reduce((sum, sale) => sum + sale.total, 0);
 
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      sales.map((sale) => ({
-        ID: sale.id,
-        Fecha: new Date(sale.saleDate).toLocaleString(),
-        Total: sale.total,
-      })),
-    );
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Ventas");
-    XLSX.writeFile(workbook, `ventas_${fromDate}_${toDate}.xlsx`);
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Ventas");
+
+    worksheet.columns = [
+      { header: "ID Venta", key: "id", width: 15 },
+      { header: "Fecha y Hora", key: "date", width: 28 },
+      { header: "Monto Total ($)", key: "total", width: 18 },
+    ];
+
+    sales.forEach((sale) => {
+      worksheet.addRow({
+        id: sale.id,
+        date: new Date(sale.saleDate).toLocaleString(),
+        total: sale.total,
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `reporte_ventas_gdev_${fromDate}_${toDate}.xlsx`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const exportToPDF = async () => {
     const doc = new jsPDF() as ExtendedJSPDF;
-    doc.text(`Reporte de ventas del ${fromDate} al ${toDate}`, 14, 16);
+    doc.text(`GDEV POS - Reporte de Ventas (${fromDate} al ${toDate})`, 14, 16);
 
     const tableData = sales.map((sale) => [
       sale.id,
       new Date(sale.saleDate).toLocaleString(),
-      sale.total.toFixed(2),
+      `$${sale.total.toFixed(2)}`,
     ]);
     autoTable(doc, {
-      head: [["ID Venta", "Fecha", "Total"]],
+      head: [["ID Venta", "Fecha y Hora", "Total"]],
       body: tableData,
-      startY: 30,
+      startY: 24,
     });
 
     if (chartRef.current && sales.length > 0) {
@@ -163,165 +180,187 @@ export default function SalesReportPage() {
       const imgWidth = 180;
       const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
       const finalY = doc.lastAutoTable?.finalY ?? 50;
-      doc.addImage(imgData, "PNG", 15, finalY, imgWidth, imgHeight);
+      doc.addImage(imgData, "PNG", 15, finalY + 10, imgWidth, imgHeight);
     }
 
-    doc.save(`ventas_${fromDate}_${toDate}.pdf`);
+    doc.save(`reporte_ventas_gdev_${fromDate}_${toDate}.pdf`);
   };
 
   return (
-    <>
-      <Navbar />
-      <div className="p-4 md:p-8">
-        <h1 className="text-2xl font-bold mb-6">Reporte de ventas</h1>
-        <form onSubmit={fetchReport} className="flex flex-col sm:flex-row gap-4 mb-6 items-end">
-          {/* Campo Desde */}
-          <div className="flex-1">
-            <label htmlFor="fromDate" className="block mb-1 font-medium text-gray-700 cursor-pointer">
-              Desde
-            </label>
-            <div className="relative">
-              <input
-                id="fromDate"
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById('fromDate') as HTMLInputElement;
-                  if (input) input.showPicker();
-                }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </button>
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <Navbar />
+
+        <main className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
+
+          {/* Encabezado GDEV */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 uppercase tracking-wide mb-1">
+                📈 Analítica & Reportes
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Reporte General de Ventas</h1>
             </div>
+
+            {sales.length > 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl flex items-center gap-3">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Total del Periodo:</span>
+                  <span className="text-xl font-black text-emerald-700">${totalGeneral.toFixed(2)}</span>
+                </div>
+            )}
           </div>
 
-          {/* Campo Hasta */}
-          <div className="flex-1">
-            <label htmlFor="toDate" className="block mb-1 font-medium text-gray-700 cursor-pointer">
-              Hasta
-            </label>
-            <div className="relative">
-              <input
-                id="toDate"
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById('toDate') as HTMLInputElement;
-                  if (input) input.showPicker();
-                }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Selector Agrupar por */}
-          <div className="flex-1">
-            <label className="block mb-1 font-medium text-gray-700">Agrupar por</label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-              className="w-full p-2 border border-gray-300 rounded bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            >
-              <option value="day">Día</option>
-              <option value="month">Mes</option>
-            </select>
-          </div>
-
-          {/* Botón Consultar */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 font-medium shadow-sm transition-colors"
-          >
-            {loading ? 'Cargando...' : 'Consultar'}
-          </button>
-        </form>
-
-
-
-        {error && <div className="text-red-500 mb-4">{error}</div>}
-
-        {sales.length === 0 && !loading && (
-          <p className="text-gray-500">
-            No hay ventas en el período seleccionado.
-          </p>
-        )}
-
-        {sales.length > 0 && (
-          <>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
-              <div className="flex gap-2">
+          {/* Formulario de Filtros */}
+          <form onSubmit={fetchReport} className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label htmlFor="fromDate" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 cursor-pointer">
+                Fecha Inicial
+              </label>
+              <div className="relative">
+                <input
+                    id="fromDate"
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white pr-9"
+                    required
+                />
                 <button
-                  onClick={exportToExcel}
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('fromDate') as HTMLInputElement;
+                      if (input) input.showPicker();
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
-                  Exportar a Excel
-                </button>
-                <button
-                  onClick={exportToPDF}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                >
-                  Exportar a PDF
+                  📅
                 </button>
               </div>
             </div>
 
-            <div ref={chartRef} className="mb-8 max-w-3xl mx-auto">
-              <Bar data={getChartData()} options={chartOptions} />
+            <div>
+              <label htmlFor="toDate" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 cursor-pointer">
+                Fecha Final
+              </label>
+              <div className="relative">
+                <input
+                    id="toDate"
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white pr-9"
+                    required
+                />
+                <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('toDate') as HTMLInputElement;
+                      if (input) input.showPicker();
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  📅
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border">
-                <thead>
-                  <tr>
-                    <th className="border p-2">ID Venta</th>
-                    <th className="border p-2">Fecha</th>
-                    <th className="border p-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sales.map((sale) => (
-                    <tr key={sale.id}>
-                      <td className="border p-2">{sale.id}</td>
-                      <td className="border p-2">
-                        {new Date(sale.saleDate).toLocaleString()}
-                      </td>
-                      <td className="border p-2">${sale.total.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-100 border-t-2 border-gray-400">
-                  <tr className="font-bold">
-                    <td colSpan={2} className="border p-2 text-right">
-                      Total general:
-                    </td>
-                    <td className="border p-2">${totalGeneral.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Agrupar Gráfico
+              </label>
+              <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as GroupBy)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              >
+                <option value="day">Por Día</option>
+                <option value="month">Por Mes</option>
+              </select>
             </div>
-          </>
-        )}
+
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md shadow-sky-600/20 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? 'Consultando...' : 'Generar Reporte'}
+            </button>
+          </form>
+
+          {error && (
+              <div className="p-3.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-sm font-medium">
+                {error}
+              </div>
+          )}
+
+          {sales.length === 0 && !loading && (
+              <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 text-sm">
+                No se encontraron ventas registradas en el periodo seleccionado.
+              </div>
+          )}
+
+          {sales.length > 0 && (
+              <>
+                {/* Botones Exportación */}
+                <div className="flex justify-end gap-2">
+                  <button
+                      onClick={exportToExcel}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  >
+                    📊 Exportar Excel
+                  </button>
+                  <button
+                      onClick={exportToPDF}
+                      className="bg-rose-600 hover:bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  >
+                    📄 Exportar PDF
+                  </button>
+                </div>
+
+                {/* Gráfico Bar Chart */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs">
+                  <div ref={chartRef} className="max-w-3xl mx-auto">
+                    <Bar data={getChartData()} options={chartOptions} />
+                  </div>
+                </div>
+
+                {/* Tabla de Resultados */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-700">
+                      <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                      <tr>
+                        <th className="p-4">ID Venta</th>
+                        <th className="p-4">Fecha y Hora</th>
+                        <th className="p-4 text-right">Monto Total</th>
+                      </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                      {sales.map((sale) => (
+                          <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 font-mono text-xs font-bold text-slate-600">#{sale.id}</td>
+                            <td className="p-4 text-slate-700 font-medium">
+                              {new Date(sale.saleDate).toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right font-black text-slate-900">${sale.total.toFixed(2)}</td>
+                          </tr>
+                      ))}
+                      </tbody>
+                      <tfoot className="bg-emerald-50/60 border-t-2 border-emerald-200">
+                      <tr className="font-bold text-slate-900">
+                        <td colSpan={2} className="p-4 text-right uppercase text-xs tracking-wider text-emerald-900">
+                          Total acumulado:
+                        </td>
+                        <td className="p-4 text-right text-base text-emerald-800 font-black">
+                          ${totalGeneral.toFixed(2)}
+                        </td>
+                      </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </>
+          )}
+        </main>
       </div>
-    </>
   );
 }

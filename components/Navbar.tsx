@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { apiFetch, removeAuthToken } from '@/lib/api';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
@@ -16,7 +17,6 @@ export default function Navbar() {
     } catch (err) {
       console.error('Error al cerrar sesión', err);
     } finally {
-      // Limpiamos token local y redirigimos de forma limpia
       if (typeof removeAuthToken === 'function') {
         removeAuthToken();
       }
@@ -30,46 +30,63 @@ export default function Navbar() {
     { href: '/products', label: 'Productos' },
     { href: '/inventory', label: 'Inventario' },
     { href: '/sales', label: 'Vender' },
-    { href: '/sales-report', label: 'Reporte de ventas' },
-    { href: '/checkout', label: 'Checkout' },
+    { href: '/sales-report', label: 'Reportes' },
   ];
 
   return (
-      <nav className="bg-slate-900 text-white shadow-md border-b border-slate-800">
+      <nav className="bg-[#090d16] text-white border-b border-slate-800 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
 
-            {/* Logo / Brand Name */}
-            <div className="flex items-center">
-              <Link href="/" className="text-xl font-bold tracking-tight hover:opacity-90 transition-opacity">
-                Gdev POS <span className="text-blue-400 font-medium text-base">Lite</span>
+            {/* Isotipo & Branding GDEV */}
+            <div className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-2 group">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center font-black text-white text-sm shadow-md group-hover:scale-105 transition-transform">
+                  G
+                </div>
+                <div className="flex flex-col">
+                <span className="text-base font-extrabold tracking-wider text-white leading-tight flex items-center gap-1.5">
+                  GDEV <span className="text-sky-400 font-normal text-xs uppercase tracking-widest hidden sm:inline">Software</span>
+                </span>
+                  <span className="text-[10px] text-slate-400 font-medium">POS Enterprise Lite</span>
+                </div>
               </Link>
             </div>
 
             {/* Menú Desktop */}
-            <div className="hidden md:flex md:items-center md:space-x-3">
-              {navLinks.map((link) => (
-                  <Link
-                      key={link.href}
-                      href={link.href}
-                      className="px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-              ))}
+            <div className="hidden md:flex md:items-center md:space-x-1">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                    <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                            isActive
+                                ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
+                                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                        }`}
+                    >
+                      {link.label}
+                    </Link>
+                );
+              })}
+
+              <div className="h-4 w-[1px] bg-slate-800 mx-2" />
+
               <button
                   onClick={handleLogout}
-                  className="bg-red-600/90 hover:bg-red-600 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ml-2"
+                  className="text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               >
                 Cerrar sesión
               </button>
             </div>
 
-            {/* Botón Menú Móvil */}
+            {/* Menú Móvil */}
             <div className="md:hidden flex items-center">
               <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className="inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none"
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
               >
                 {isOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
               </button>
@@ -79,25 +96,30 @@ export default function Navbar() {
 
         {/* Menú Desplegable Móvil */}
         {isOpen && (
-            <div className="md:hidden bg-slate-900/95 border-b border-slate-800">
-              <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                {navLinks.map((link) => (
+            <div className="md:hidden bg-[#090d16] border-b border-slate-800 px-4 pt-2 pb-4 space-y-1">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
                     <Link
                         key={link.href}
                         href={link.href}
                         onClick={() => setIsOpen(false)}
-                        className="block px-3 py-2 rounded-lg text-base font-medium text-slate-300 hover:text-white hover:bg-slate-800"
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium ${
+                            isActive
+                                ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
+                                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                        }`}
                     >
                       {link.label}
                     </Link>
-                ))}
-                <button
-                    onClick={handleLogout}
-                    className="w-full text-left block px-3 py-2 rounded-lg text-base font-medium bg-red-600 text-white hover:bg-red-700 transition-colors mt-2"
-                >
-                  Cerrar sesión
-                </button>
-              </div>
+                );
+              })}
+              <button
+                  onClick={handleLogout}
+                  className="w-full text-left block px-3 py-2 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 mt-2"
+              >
+                Cerrar sesión
+              </button>
             </div>
         )}
       </nav>

@@ -1,5 +1,5 @@
 // lib/api.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com').replace(/\/$/, '');
 
 // Guardar token después del login
 export function setAuthToken(token: string) {
@@ -24,13 +24,19 @@ export function removeAuthToken() {
 }
 
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
-  const url = `${API_BASE}${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE}${cleanEndpoint}`;
   const token = getAuthToken();
-  
-  let headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
 
+  // Normalizar Headers
+  const headers: Record<string, string> = {};
+
+  // Solo agregar Content-Type si el body NO es FormData
+  if (!(options?.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  // Copiar headers existentes
   if (options?.headers) {
     if (options.headers instanceof Headers) {
       options.headers.forEach((value, key) => {
@@ -41,34 +47,46 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
         headers[key] = value;
       });
     } else {
-      headers = { ...headers, ...options.headers as Record<string, string> };
+      Object.assign(headers, options.headers);
     }
   }
-  
+
+  // Agregar Token de Autenticación
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'omit', // Ya no usamos cookies
+    credentials: 'omit',
     headers,
   });
 
+  // Manejo de expiración de sesión (401 / 403)
+  if (response.status === 401 || response.status === 403) {
+    removeAuthToken();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+  }
+
+  // Manejo seguro de errores sin romper el Stream
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+    let errorMessage = `HTTP ${response.status} (${response.statusText})`;
     try {
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const errorData = await response.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
       } else {
-        errorMessage = await response.text();
+        const textError = await response.text();
+        if (textError) errorMessage = textError;
       }
     } catch {
-      errorMessage = await response.text();
+      // Si falla la lectura del body, conserva la causa por defecto
     }
     throw new Error(errorMessage);
   }
+
   return response;
 }
