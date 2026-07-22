@@ -30,7 +30,7 @@ export default function SalesPage() {
   const [scanning, setScanning] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
 
-  // Cargar carrito desde localStorage al iniciar (sin activar set-state-in-effect)
+  // Cargar carrito desde localStorage al iniciar
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
@@ -224,26 +224,6 @@ export default function SalesPage() {
     }
   }, [fetchProductByBarcode, createProductAndAddToCart, isProcessing]);
 
-  // Atajo directo para demo sin prompts ni alertas
-  const addQuickDemoItem = (id: number, barcodeStr: string, name: string, price: number) => {
-    setMessage(null);
-    setCart((prev) => {
-      const existing = prev.find((item) => item.productId === id);
-      let newCart;
-      if (existing) {
-        newCart = prev.map((item) =>
-            item.productId === id
-                ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
-                : item
-        );
-      } else {
-        newCart = [...prev, { productId: id, barcode: barcodeStr, name, price, quantity: 1, subtotal: price }];
-      }
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      return newCart;
-    });
-  };
-
   const removeFromCart = (productId: number) => {
     setCart((prev) => {
       const newCart = prev.filter((item) => item.productId !== productId);
@@ -290,7 +270,7 @@ export default function SalesPage() {
             </div>
           </div>
 
-          {/* Tarjeta de Atajos Rápidos */}
+          {/* ⚡ Tarjeta de Atajos Rápidos con Productos Reales de la BD */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
             <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-sky-700 uppercase tracking-wider">
@@ -302,16 +282,18 @@ export default function SalesPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                  onClick={() => addQuickDemoItem(9991, "123456", "Mouse Inalámbrico GDEV", 1200)}
-                  className="text-xs font-semibold bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-sky-300 transition-all cursor-pointer"
+                  onClick={() => addToCart('7500023445646')}
+                  disabled={loading || isProcessing}
+                  className="text-xs font-semibold bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-sky-300 transition-all cursor-pointer disabled:opacity-50"
               >
-                + Mouse Inalámbrico ($1,200)
+                + Mouse ($1,200)
               </button>
               <button
-                  onClick={() => addQuickDemoItem(9992, "789012", "Teclado Mecánico RGB", 850)}
-                  className="text-xs font-semibold bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-sky-300 transition-all cursor-pointer"
+                  onClick={() => addToCart('7503023290364')}
+                  disabled={loading || isProcessing}
+                  className="text-xs font-semibold bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-sky-300 transition-all cursor-pointer disabled:opacity-50"
               >
-                + Teclado Mecánico ($850)
+                + Terminal Clip ($250)
               </button>
             </div>
           </div>
