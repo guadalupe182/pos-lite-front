@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { apiFetch, setAuthToken } from '@/lib/api';
 import Link from 'next/link';
 
@@ -10,7 +10,6 @@ export default function LoginForm() {
   const [password, setPassword] = useState('admin123');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const returnUrl = searchParams?.get('returnUrl') || '/';
@@ -37,18 +36,24 @@ export default function LoginForm() {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.token) {
-          setAuthToken(data.token);
-          router.push(returnUrl);
+        const token = data.token || data.access_token;
+
+        if (token) {
+          // Guardar en sessionStorage + Cookie
+          setAuthToken(token);
+
+          // Navegación mediante window.location para forzar recarga de cookies en el middleware
+          window.location.href = returnUrl || '/';
         } else {
           setError('Credenciales inválidas');
         }
       } else {
         setError('Credenciales inválidas');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error en login:', err);
-      setError('Error de conexión con el servidor');
+      const msg = err instanceof Error ? err.message : 'Error de conexión con el servidor';
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -72,9 +77,9 @@ export default function LoginForm() {
           {/* ⚡ Tarjeta de Accesos Rápidos Demo */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-left space-y-2">
             <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-sky-700 uppercase tracking-wider flex items-center gap-1">
-              🚀 Acceso Demo
-            </span>
+              <span className="text-[11px] font-bold text-sky-700 uppercase tracking-wider flex items-center gap-1">
+                🚀 Acceso Demo
+              </span>
               <button
                   type="button"
                   onClick={handleAutoFill}

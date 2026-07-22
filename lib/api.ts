@@ -1,17 +1,18 @@
-// lib/api.ts
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com').replace(/\/$/, '');
 
-// Guardar token después del login
+// Guardar token después del login (en sessionStorage y Cookie)
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('access_token', token);
+    // Guardar también en Cookie para que el middleware de Next.js lo reconozca
+    document.cookie = `access_token=${token}; path=/; max-age=86400; SameSite=Lax; Secure`;
   }
 }
 
-// Obtener token
+// Obtener token (Busca en sessionStorage y cae a Cookies si no está)
 export function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
-    return sessionStorage.getItem('access_token');
+    return sessionStorage.getItem('access_token') || getCookie('access_token');
   }
   return null;
 }
@@ -20,7 +21,17 @@ export function getAuthToken(): string | null {
 export function removeAuthToken() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('access_token');
+    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
+}
+
+// Auxiliar para leer cookie en el cliente
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
 }
 
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
