@@ -112,29 +112,30 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+
                 {/* 💳 Banner de datos de prueba para Mercado Pago (Sandbox Demo) */}
                 <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4 text-left shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                  💡 Tarjeta de Prueba Mercado Pago (Sandbox)
-                </span>
+    <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+      💡 Tarjeta de Prueba Mercado Pago (Sandbox)
+    </span>
                     <span className="text-[10px] bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded">
-                  Entorno Demo
-                </span>
+      Entorno Demo
+    </span>
                   </div>
 
                   <p className="text-xs text-gray-600 mb-2">
-                    Usa estos datos ficticios para simular un cobro aprobado sin cargos reales:
+                    Usa esta tarjeta de tu integración para simular un cobro aprobado sin saldo real:
                   </p>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono bg-white p-3 rounded-lg border border-blue-100 text-gray-800">
                     <div>
                       <span className="block text-[10px] text-gray-500 font-sans font-semibold">Número</span>
-                      <span className="font-bold">2345 6789 0123 4567</span>
+                      <span className="font-bold select-all">5474925432670366</span>
                     </div>
                     <div>
                       <span className="block text-[10px] text-gray-500 font-sans font-semibold">Vencimiento</span>
-                      <span className="font-bold">12/28</span>
+                      <span className="font-bold">11/30</span>
                     </div>
                     <div>
                       <span className="block text-[10px] text-gray-500 font-sans font-semibold">CVC / CVV</span>

@@ -37,7 +37,6 @@ export default function SalesPage() {
       try {
         const parsedCart = JSON.parse(savedCart);
         setCart(parsedCart);
-        console.log('🔄 Carrito cargado desde localStorage:', parsedCart);
       } catch (e) {
         console.error('Error al cargar carrito:', e);
       }
@@ -84,11 +83,11 @@ export default function SalesPage() {
 
       if (categories && categories.length > 0) {
         const categoryList = categories
-          .map((c, idx) => `${idx + 1}. ${c.name}`)
-          .join("\n");
+            .map((c, idx) => `${idx + 1}. ${c.name}`)
+            .join("\n");
         const selected = prompt(
-          `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
-          "1",
+            `Seleccione una categoría:\n${categoryList}\n\n0. Crear nueva categoría\n\nPor defecto: 1`,
+            "1",
         );
 
         const num = parseInt(selected || "1", 10);
@@ -152,7 +151,6 @@ export default function SalesPage() {
             subtotal: product.price * initialQuantity,
           }];
           localStorage.setItem('cart', JSON.stringify(newCart));
-          console.log('🟢 Nuevo carrito después de crear producto:', newCart);
           return newCart;
         });
         setMessage({
@@ -194,13 +192,13 @@ export default function SalesPage() {
         let newCart;
         if (existing) {
           newCart = prev.map((item) =>
-            item.productId === product.id
-              ? {
-                  ...item,
-                  quantity: item.quantity + 1,
-                  subtotal: (item.quantity + 1) * item.price,
-                }
-              : item
+              item.productId === product.id
+                  ? {
+                    ...item,
+                    quantity: item.quantity + 1,
+                    subtotal: (item.quantity + 1) * item.price,
+                  }
+                  : item
           );
         } else {
           newCart = [...prev, {
@@ -213,7 +211,6 @@ export default function SalesPage() {
           }];
         }
         localStorage.setItem('cart', JSON.stringify(newCart));
-        console.log('🟡 Nuevo carrito después de agregar producto:', newCart);
         return newCart;
       });
       setBarcode("");
@@ -240,17 +237,25 @@ export default function SalesPage() {
     }
     setCart((prev) => {
       const newCart = prev.map((item) =>
-        item.productId === productId
-          ? {
-              ...item,
-              quantity: newQty,
-              subtotal: newQty * item.price,
-            }
-          : item
+          item.productId === productId
+              ? {
+                ...item,
+                quantity: newQty,
+                subtotal: newQty * item.price,
+              }
+              : item
       );
       localStorage.setItem('cart', JSON.stringify(newCart));
       return newCart;
     });
+  };
+
+  const clearCart = () => {
+    if (confirm("¿Estás seguro de cancelar esta venta y vaciar el carrito?")) {
+      setCart([]);
+      localStorage.removeItem('cart');
+      setMessage({ type: 'success', text: 'Venta cancelada. Se vació el carrito.' });
+    }
   };
 
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
@@ -265,126 +270,172 @@ export default function SalesPage() {
   };
 
   return (
-    <>
-      <Navbar />
-      <div className="p-4 md:p-8 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Registrar venta</h1>
+      <>
+        <Navbar />
+        <div className="p-4 md:p-8 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Registrar venta</h1>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-6">
-          <input
-            type="text"
-            placeholder="Código de barras"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addToCart(barcode)}
-            className="flex-1 p-2 border rounded text-gray-900"
-            disabled={loading || isProcessing}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => addToCart(barcode)}
-              disabled={loading || !barcode || isProcessing}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-            >
-              {loading ? "Buscando..." : "Agregar"}
-            </button>
-            <button
-              onClick={handleOpenScanner}
-              disabled={isProcessing}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
-            >
-              📷 Escanear
-            </button>
-          </div>
-        </div>
-
-        {message && (
-          <div className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-            {message.text}
-          </div>
-        )}
-
-        {cart.length > 0 && (
-          <>
-            <div className="overflow-x-auto mb-4">
-              <table className="min-w-full bg-white border">
-                <thead>
-                  <tr>
-                    <th className="border p-2 text-gray-900">Producto</th>
-                    <th className="border p-2 text-gray-900">Precio</th>
-                    <th className="border p-2 text-gray-900">Cantidad</th>
-                    <th className="border p-2 text-gray-900">Subtotal</th>
-                    <th className="border p-2 text-gray-900"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.map((item) => (
-                    <tr key={item.productId}>
-                      <td className="border p-2 text-gray-900">{item.name}</td>
-                      <td className="border p-2 text-gray-900">${item.price.toFixed(2)}</td>
-                      <td className="border p-2 text-gray-900">
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
-                          className="w-20 p-1 border rounded text-center text-gray-900"
-                        />
-                      </td>
-                      <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
-                      <td className="border p-2 text-gray-900">
-                        <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700">
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} className="border p-2 text-right font-bold text-gray-900">Total</td>
-                    <td className="border p-2 font-bold text-gray-900">${total.toFixed(2)}</td>
-                    <td className="border p-2"></td>
-                  </tr>
-                </tfoot>
-              </table>
+          {/* ⚡ Atajos de prueba rápida para la Demo */}
+          <div className="mb-6 p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-left shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+              🚀 Carga Rápida Demo (Prueba con 1 Clic)
+            </span>
+              <span className="text-[10px] bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded">
+              Atajos
+            </span>
             </div>
-            <button
-              onClick={() => {
-                localStorage.setItem('cart', JSON.stringify(cart));
-                router.push('/checkout');
-              }}
-              disabled={cart.length === 0}
-              className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
-            >
-              Ir a pagar
-            </button>
-          </>
-        )}
-      </div>
-
-      {scanning && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-md">
-            <div className="flex justify-between mb-2">
-              <h2 className="text-lg font-bold">Escanea el código de barras</h2>
-              <button onClick={handleCloseScanner} className="text-gray-500 hover:text-gray-700">✕</button>
+            <p className="text-xs text-gray-600 mb-2.5">
+              Haz clic en cualquiera de estos botones para probar la adición instantánea al carrito:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                  type="button"
+                  onClick={() => addToCart("123456")}
+                  disabled={loading || isProcessing}
+                  className="text-xs font-medium bg-white hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-300 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                + Agregar Mouse (Cód: 123456)
+              </button>
+              <button
+                  type="button"
+                  onClick={() => addToCart("789012")}
+                  disabled={loading || isProcessing}
+                  className="text-xs font-medium bg-white hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-300 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                + Agregar Teclado (Cód: 789012)
+              </button>
             </div>
-            <QrScanner
-              key={scannerKey}
-              onScan={(result) => {
-                if (result) {
-                  addToCart(result);
-                  handleCloseScanner();
-                }
-              }}
-              onError={(err) => console.error("Scanner error:", err)}
-              facingMode="environment"
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 mb-6">
+            <input
+                type="text"
+                placeholder="Código de barras (ej. 123456)"
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addToCart(barcode)}
+                className="flex-1 p-2 border rounded text-gray-900 bg-white"
+                disabled={loading || isProcessing}
             />
-            <p className="text-sm text-gray-500 mt-2 text-center">Apunta la cámara al código de barras</p>
+            <div className="flex gap-2">
+              <button
+                  onClick={() => addToCart(barcode)}
+                  disabled={loading || !barcode || isProcessing}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? "Buscando..." : "Agregar"}
+              </button>
+              <button
+                  onClick={handleOpenScanner}
+                  disabled={isProcessing}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 cursor-pointer"
+              >
+                📷 Escanear
+              </button>
+            </div>
           </div>
+
+          {message && (
+              <div className={`mb-4 p-3 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                {message.text}
+              </div>
+          )}
+
+          {cart.length > 0 && (
+              <>
+                <div className="overflow-x-auto mb-6">
+                  <table className="min-w-full bg-white border">
+                    <thead>
+                    <tr>
+                      <th className="border p-2 text-gray-900">Producto</th>
+                      <th className="border p-2 text-gray-900">Precio</th>
+                      <th className="border p-2 text-gray-900">Cantidad</th>
+                      <th className="border p-2 text-gray-900">Subtotal</th>
+                      <th className="border p-2 text-gray-900"></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {cart.map((item) => (
+                        <tr key={item.productId}>
+                          <td className="border p-2 text-gray-900">{item.name}</td>
+                          <td className="border p-2 text-gray-900">${item.price.toFixed(2)}</td>
+                          <td className="border p-2 text-gray-900">
+                            <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
+                                className="w-20 p-1 border rounded text-center text-gray-900"
+                            />
+                          </td>
+                          <td className="border p-2 text-gray-900">${item.subtotal.toFixed(2)}</td>
+                          <td className="border p-2 text-gray-900">
+                            <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700 cursor-pointer text-sm">
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                      <td colSpan={3} className="border p-2 text-right font-bold text-gray-900">Total</td>
+                      <td className="border p-2 font-bold text-gray-900">${total.toFixed(2)}</td>
+                      <td className="border p-2"></td>
+                    </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* 🔘 Acciones de Venta (Cancelar / Ir a pagar) */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                      type="button"
+                      onClick={clearCart}
+                      className="w-full sm:w-1/3 bg-red-100 hover:bg-red-200 text-red-700 font-medium p-2.5 rounded-lg border border-red-300 transition-colors cursor-pointer text-sm"
+                  >
+                    🚫 Cancelar venta
+                  </button>
+
+                  <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('cart', JSON.stringify(cart));
+                        router.push('/checkout');
+                      }}
+                      disabled={cart.length === 0}
+                      className="w-full sm:w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-medium p-2.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer text-sm shadow-sm"
+                  >
+                    Ir a pagar (${total.toFixed(2)})
+                  </button>
+                </div>
+              </>
+          )}
         </div>
-      )}
-    </>
+
+        {scanning && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-4 w-full max-w-md">
+                <div className="flex justify-between mb-2">
+                  <h2 className="text-lg font-bold text-gray-900">Escanea el código de barras</h2>
+                  <button onClick={handleCloseScanner} className="text-gray-500 hover:text-gray-700 cursor-pointer">✕</button>
+                </div>
+                <QrScanner
+                    key={scannerKey}
+                    onScan={(result) => {
+                      if (result) {
+                        addToCart(result);
+                        handleCloseScanner();
+                      }
+                    }}
+                    onError={(err) => console.error("Scanner error:", err)}
+                    facingMode="environment"
+                />
+                <p className="text-sm text-gray-500 mt-2 text-center">Apunta la cámara al código de barras</p>
+              </div>
+            </div>
+        )}
+      </>
   );
 }
