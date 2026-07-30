@@ -35,17 +35,28 @@ export default function LoginForm() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        const token = data.token || data.access_token;
+        // 🔥 FIX: Detección inteligente del tipo de respuesta
+        const contentType = res.headers.get('content-type');
+        let token = '';
 
-        if (token) {
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          // Cubrimos las respuestas más comunes de Spring Security
+          token = data.token || data.access_token || data.jwt || data.jwtToken;
+        } else {
+          // Por si el backend retorna el JWT directo como un string puro
+          token = await res.text();
+        }
+
+        // Validamos que el token exista y no sea la palabra 'undefined'
+        if (token && token.trim() !== '' && token !== 'undefined') {
           // Guardar en sessionStorage + Cookie
           setAuthToken(token);
 
           // Navegación mediante window.location para forzar recarga de cookies en el middleware
           window.location.href = returnUrl || '/';
         } else {
-          setError('Credenciales inválidas');
+          setError('El servidor respondió correctamente, pero no envió un token válido.');
         }
       } else {
         setError('Credenciales inválidas');

@@ -1,13 +1,15 @@
-// ✅ Ya no hay rastro de Render. Apuntamos a tu variable de entorno o a OCI directamente.
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.guadaluperosas.com').replace(/\/$/, '');
 
 // Guardar token después del login (en sessionStorage y Cookie)
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
-    sessionStorage.setItem('access_token', token);
+    // FIX: Limpiamos el prefijo 'Bearer ' por si el backend ya lo incluye en su respuesta
+    const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
+
+    sessionStorage.setItem('access_token', cleanToken);
     // Guardar también en Cookie para que el middleware de Next.js lo reconozca
-    // ✅ Ajustado a SameSite=None para compatibilidad cross-site (Vercel -> OCI)
-    document.cookie = `access_token=${token}; path=/; max-age=86400; SameSite=None; Secure`;
+    // Ajustado a SameSite=None para compatibilidad cross-site (Vercel -> OCI)
+    document.cookie = `access_token=${cleanToken}; path=/; max-age=86400; SameSite=None; Secure`;
   }
 }
 
@@ -71,12 +73,14 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
 
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // ✅ ESTE ES EL FIX ESTRELLA PARA LAS COOKIES Y EL LOGOUT
+    credentials: 'include', // ESTE ES EL FIX ESTRELLA PARA LAS COOKIES Y EL LOGOUT
     headers,
   });
 
-  // Manejo de expiración de sesión (401 / 403)
-  if (response.status === 401 || response.status === 403) {
+  // Manejo de expiración de sesión (Solo 401)
+  //  FIX: NO desloguear en 403 (Forbidden - Falta de roles), eso debe manejarlo la UI.
+  if (response.status === 401) {
+    console.error(`🔒 Error 401 detectado al llamar a: ${url}. Destruyendo sesión y redirigiendo...`);
     removeAuthToken();
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
