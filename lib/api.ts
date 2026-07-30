@@ -81,10 +81,10 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
   //  FIX: NO desloguear en 403 (Forbidden - Falta de roles), eso debe manejarlo la UI.
   if (response.status === 401) {
     console.error(`🔒 Error 401 detectado al llamar a: ${url}. Destruyendo sesión y redirigiendo...`);
-    removeAuthToken();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
-    }
+    //removeAuthToken();
+    //if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    // window.location.href = '/login';
+    //}
   }
 
   // Manejo seguro de errores sin romper el Stream
