@@ -19,27 +19,37 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"mp" | "cash">("mp");
 
-  const totalAmount = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
+  // Campos agregados: Efectivo recibido y Correo del cliente
+  const [cashReceived, setCashReceived] = useState<string>("");
+  const [customerEmail, setCustomerEmail] = useState<string>("");
+
+  const subtotal = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
+  const totalAmount = subtotal * 1.16; // Con IVA (16%)
+
+  const cashNum = parseFloat(cashReceived) || 0;
+  const changeGiven = cashNum > totalAmount ? cashNum - totalAmount : 0;
 
   // Manejar pago en efectivo
   const handleCashPayment = async () => {
     setLoading(true);
     setError(null);
+
+    if (cashReceived && cashNum < totalAmount) {
+      setError(`El efectivo recibido ($${cashNum.toFixed(2)}) es menor al total ($${totalAmount.toFixed(2)})`);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await apiFetch("/api/sales", {
+      const response = await apiFetch("/api/sales?paymentMethod=EFECTIVO", {
         method: "POST",
         body: JSON.stringify({
-          items: items.map(({ productId, quantity }) => ({ productId, quantity }))
+          items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+          cashReceived: cashNum > 0 ? cashNum : totalAmount,
+          change: changeGiven,
+          customerEmail: customerEmail.trim() || undefined,
         }),
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push("/login?returnUrl=/checkout");
-          return;
-        }
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
 
       const data = await response.json();
       console.log("Venta registrada en efectivo:", data);
@@ -55,7 +65,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
         message = err.message;
       }
       setError(message);
-      router.push("/payment/failure");
     } finally {
       setLoading(false);
     }
@@ -71,14 +80,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
         body: JSON.stringify({ items }),
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push("/login?returnUrl=/checkout");
-          return;
-        }
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
       const data = await response.json();
       if (data.id) {
         setPreferenceId(data.id);
@@ -92,7 +93,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
         message = err.message;
       }
       setError(message);
-      router.push("/payment/failure");
     } finally {
       setLoading(false);
     }
@@ -121,17 +121,19 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
               onSubmit={async () => {
                 console.log("Procesando cobro MercadoPago desde frontend...");
                 try {
-                  const saleResponse = await apiFetch("/api/sales", {
+                  // FIX: Se pasa explícitamente ?paymentMethod=MERCADOPAGO
+                  const saleResponse = await apiFetch("/api/sales?paymentMethod=MERCADOPAGO", {
                     method: "POST",
-                    body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ productId, quantity })) }),
+                    body: JSON.stringify({
+                      items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+                      customerEmail: customerEmail.trim() || undefined,
+                    }),
                   });
 
                   if (saleResponse.ok) {
                     if (onSuccess) onSuccess();
                     localStorage.removeItem("cart");
                     router.push("/payment/success?method=mercadopago");
-                  } else {
-                    throw new Error("No se pudo registrar la venta en base de datos");
                   }
                 } catch (error) {
                   console.error("Error registrando venta tras pago MP:", error);
@@ -170,10 +172,40 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
           </label>
         </div>
 
+        {/* Email opcional del comprador para enviar ticket */}
+        <div className="space-y-1">
+          <label className="block text-xs font-semibold text-slate-600">
+            Email del cliente (opcional para recibo):
+          </label>
+          <input
+              type="email"
+              placeholder="cliente@ejemplo.com"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white text-slate-900"
+          />
+        </div>
+
+        {/* Calculadora de Cambio para Pago en Efectivo */}
         {paymentMethod === "cash" && (
-            <p className="text-xs text-gray-500 text-center">
-              💡 Registrará la transacción como cobro directo en efectivo (descuenta inventario de inmediato).
-            </p>
+            <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200/80 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-bold text-emerald-900">Monto Recibido ($):</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    placeholder={totalAmount.toFixed(2)}
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    className="w-32 px-3 py-1.5 text-xs font-bold text-slate-900 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right bg-white"
+                />
+              </div>
+
+              <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-emerald-200/60 text-emerald-900">
+                <span>Cambio a Devolver:</span>
+                <span className="font-mono text-sm text-emerald-700">${changeGiven.toFixed(2)} MXN</span>
+              </div>
+            </div>
         )}
 
         {/* Botón de pago dinámico */}
@@ -182,7 +214,11 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
             disabled={loading}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
         >
-          {loading ? "Procesando..." : paymentMethod === "mp" ? "Continuar a pasarela Mercado Pago" : "Completar cobro en efectivo"}
+          {loading
+              ? "Procesando..."
+              : paymentMethod === "mp"
+                  ? "Continuar a pasarela Mercado Pago"
+                  : "Completar cobro en efectivo"}
         </button>
 
         {error && (

@@ -1,11 +1,13 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://pos-lite-kj7u.onrender.com').replace(/\/$/, '');
+// ✅ Ya no hay rastro de Render. Apuntamos a tu variable de entorno o a OCI directamente.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.guadaluperosas.com').replace(/\/$/, '');
 
 // Guardar token después del login (en sessionStorage y Cookie)
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('access_token', token);
     // Guardar también en Cookie para que el middleware de Next.js lo reconozca
-    document.cookie = `access_token=${token}; path=/; max-age=86400; SameSite=Lax; Secure`;
+    // ✅ Ajustado a SameSite=None para compatibilidad cross-site (Vercel -> OCI)
+    document.cookie = `access_token=${token}; path=/; max-age=86400; SameSite=None; Secure`;
   }
 }
 
@@ -21,7 +23,7 @@ export function getAuthToken(): string | null {
 export function removeAuthToken() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('access_token');
-    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';
   }
 }
 
@@ -69,7 +71,7 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
 
   const response = await fetch(url, {
     ...options,
-    credentials: 'omit',
+    credentials: 'include', // ✅ ESTE ES EL FIX ESTRELLA PARA LAS COOKIES Y EL LOGOUT
     headers,
   });
 
