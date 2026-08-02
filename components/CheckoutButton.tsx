@@ -19,23 +19,30 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
   const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"mp" | "cash">("mp");
 
-  // Campos agregados: Efectivo recibido y Correo del cliente
   const [cashReceived, setCashReceived] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string>("");
 
-  const subtotal = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
-  const totalAmount = subtotal * 1.16; // Con IVA (16%)
+  // Cálculo exacto de total redondeado a 2 decimales
+  const totalAmount = Math.round(
+      items.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0) * 100
+  ) / 100;
 
-  const cashNum = parseFloat(cashReceived) || 0;
-  const changeGiven = cashNum > totalAmount ? cashNum - totalAmount : 0;
+  const cashNum = Math.round((parseFloat(cashReceived) || 0) * 100) / 100;
+
+  // Cálculo de cambio sin imprecisiones flotantes
+  const changeGiven = cashNum >= totalAmount
+      ? Math.round((cashNum - totalAmount) * 100) / 100
+      : 0;
 
   // Manejar pago en efectivo
   const handleCashPayment = async () => {
     setLoading(true);
     setError(null);
 
-    if (cashReceived && cashNum < totalAmount) {
-      setError(`El efectivo recibido ($${cashNum.toFixed(2)}) es menor al total ($${totalAmount.toFixed(2)})`);
+    const actualCash = cashReceived.trim() !== "" ? cashNum : totalAmount;
+
+    if (actualCash < totalAmount) {
+      setError(`El efectivo recibido ($${actualCash.toFixed(2)}) es menor al total ($${totalAmount.toFixed(2)})`);
       setLoading(false);
       return;
     }
@@ -45,14 +52,16 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
         method: "POST",
         body: JSON.stringify({
           items: items.map(({ productId, quantity }) => ({ productId, quantity })),
-          cashReceived: cashNum > 0 ? cashNum : totalAmount,
+          cashReceived: actualCash,
           change: changeGiven,
           customerEmail: customerEmail.trim() || undefined,
         }),
       });
 
-      const data = await response.json();
-      console.log("Venta registrada en efectivo:", data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Error al registrar la venta");
+      }
 
       if (onSuccess) onSuccess();
       localStorage.removeItem("cart");
@@ -98,7 +107,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
     }
   };
 
-  // Si ya tenemos preferenceId, mostrar el brick de MercadoPago
   if (preferenceId) {
     return (
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -111,17 +119,13 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
                   creditCard: "all",
                 },
               }}
-              onReady={() => {
-                console.log("Payment brick ready");
-              }}
+              onReady={() => console.log("Payment brick ready")}
               onError={async (error) => {
                 console.error("Payment error:", error);
                 router.push("/payment/failure");
               }}
               onSubmit={async () => {
-                console.log("Procesando cobro MercadoPago desde frontend...");
                 try {
-                  // FIX: Se pasa explícitamente ?paymentMethod=MERCADOPAGO
                   const saleResponse = await apiFetch("/api/sales?paymentMethod=MERCADOPAGO", {
                     method: "POST",
                     body: JSON.stringify({
@@ -145,10 +149,8 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
     );
   }
 
-  // Mostrar selector de método de pago
   return (
       <div className="space-y-4">
-        {/* Selector de método de pago */}
         <div className="flex gap-6 justify-center bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm font-medium text-gray-800">
           <label className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors">
             <input
@@ -172,7 +174,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
           </label>
         </div>
 
-        {/* Email opcional del comprador para enviar ticket */}
         <div className="space-y-1">
           <label className="block text-xs font-semibold text-slate-600">
             Email del cliente (opcional para recibo):
@@ -186,7 +187,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
           />
         </div>
 
-        {/* Calculadora de Cambio para Pago en Efectivo */}
         {paymentMethod === "cash" && (
             <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200/80 space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -208,7 +208,6 @@ export default function CheckoutButton({ items, onSuccess }: CheckoutButtonProps
             </div>
         )}
 
-        {/* Botón de pago dinámico */}
         <button
             onClick={paymentMethod === "mp" ? handleMPPayment : handleCashPayment}
             disabled={loading}
