@@ -11,22 +11,26 @@ function SuccessContent() {
   const method = searchParams.get("method");
   const [countdown, setCountdown] = useState(5);
 
+  // 1. Limpieza inicial del carrito
   useEffect(() => {
     localStorage.removeItem("cart");
+  }, []);
 
+  // 2. Manejo del temporizador (solo decrementa el estado)
+  useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          router.push("/sales");
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCountdown((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [router]);
+  }, []);
+
+  // 3. Redirección limpia fuera de la fase de renderizado
+  useEffect(() => {
+    if (countdown <= 0) {
+      router.push("/sales");
+    }
+  }, [countdown, router]);
 
   const getMessage = () => {
     if (method === "cash") {
@@ -66,7 +70,7 @@ function SuccessContent() {
           </div>
 
           <p className="text-[11px] font-mono text-slate-400 pt-2">
-            Redirigiendo a ventas en <span className="font-bold text-sky-600">{countdown}s</span>...
+            Redirigiendo a ventas en <span className="font-bold text-sky-600">{Math.max(0, countdown)}s</span>...
           </p>
         </div>
       </div>

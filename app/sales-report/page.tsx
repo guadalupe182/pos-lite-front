@@ -6,7 +6,6 @@ import Navbar from "@/components/Navbar";
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import html2canvas from "html2canvas";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,6 +15,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import type { Chart as ChartJSInstance } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
 ChartJS.register(
@@ -24,7 +24,7 @@ ChartJS.register(
     BarElement,
     Title,
     Tooltip,
-    Legend,
+    Legend
 );
 
 type Sale = {
@@ -46,13 +46,15 @@ export default function SalesReportPage() {
     return date.toISOString().split("T")[0];
   });
   const [toDate, setToDate] = useState(
-      () => new Date().toISOString().split("T")[0],
+      () => new Date().toISOString().split("T")[0]
   );
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [groupBy, setGroupBy] = useState<GroupBy>("day");
-  const chartRef = useRef<HTMLDivElement>(null);
+
+  // Referencia typed directamente a la instancia de ChartJS
+  const chartRef = useRef<ChartJSInstance<"bar"> | null>(null);
 
   const fetchReport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +108,7 @@ export default function SalesReportPage() {
                   ? "Ventas totales por día ($ MXN)"
                   : "Ventas totales por mes ($ MXN)",
           data: Object.values(groups),
-          backgroundColor: "rgba(2, 132, 199, 0.75)", // Tone sky-600
+          backgroundColor: "rgba(2, 132, 199, 0.75)",
           borderColor: "rgba(2, 132, 199, 1)",
           borderWidth: 1.5,
           borderRadius: 8,
@@ -158,7 +160,7 @@ export default function SalesReportPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const exportToPDF = async () => {
+  const exportToPDF = () => {
     const doc = new jsPDF() as ExtendedJSPDF;
     doc.text(`GDEV POS - Reporte de Ventas (${fromDate} al ${toDate})`, 14, 16);
 
@@ -167,20 +169,20 @@ export default function SalesReportPage() {
       new Date(sale.saleDate).toLocaleString(),
       `$${sale.total.toFixed(2)}`,
     ]);
+
     autoTable(doc, {
       head: [["ID Venta", "Fecha y Hora", "Total"]],
       body: tableData,
       startY: 24,
     });
 
+    // Renderizado directo desde la instancia en memoria de Chart.js
     if (chartRef.current && sales.length > 0) {
-      const canvas = await html2canvas(chartRef.current);
-      const imgData = canvas.toDataURL("image/png");
-      const imgProps = doc.getImageProperties(imgData);
-      const imgWidth = 180;
-      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+      const chartInstance = chartRef.current;
+      const imgData = chartInstance.toBase64Image("image/png", 1.0);
       const finalY = doc.lastAutoTable?.finalY ?? 50;
-      doc.addImage(imgData, "PNG", 15, finalY + 10, imgWidth, imgHeight);
+
+      doc.addImage(imgData, "PNG", 15, finalY + 10, 180, 90);
     }
 
     doc.save(`reporte_ventas_gdev_${fromDate}_${toDate}.pdf`);
@@ -191,8 +193,6 @@ export default function SalesReportPage() {
         <Navbar />
 
         <main className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
-
-          {/* Encabezado GDEV */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 uppercase tracking-wide mb-1">
@@ -209,7 +209,6 @@ export default function SalesReportPage() {
             )}
           </div>
 
-          {/* Formulario de Filtros */}
           <form onSubmit={fetchReport} className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
             <div>
               <label htmlFor="fromDate" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 cursor-pointer">
@@ -300,7 +299,6 @@ export default function SalesReportPage() {
 
           {sales.length > 0 && (
               <>
-                {/* Botones Exportación */}
                 <div className="flex justify-end gap-2">
                   <button
                       onClick={exportToExcel}
@@ -316,14 +314,12 @@ export default function SalesReportPage() {
                   </button>
                 </div>
 
-                {/* Gráfico Bar Chart */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs">
-                  <div ref={chartRef} className="max-w-3xl mx-auto">
-                    <Bar data={getChartData()} options={chartOptions} />
+                  <div className="max-w-3xl mx-auto">
+                    <Bar ref={chartRef} data={getChartData()} options={chartOptions} />
                   </div>
                 </div>
 
-                {/* Tabla de Resultados */}
                 <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-700">
