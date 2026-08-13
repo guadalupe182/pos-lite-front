@@ -1,14 +1,33 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ComponentType } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import dynamic from 'next/dynamic';
 
-// Cargar QrScanner sin SSR
-const QrScanner = dynamic(
-    () => import('@yudiel/react-qr-scanner').then((m) => m.Scanner || m.QrScanner),
+interface ScanResultItem {
+  rawValue?: string;
+}
+
+type ScanResult = ScanResultItem[] | string | null | undefined;
+
+interface QrScannerProps {
+  key?: number;
+  onScan?: (result: ScanResult) => void;
+  onError?: (err: unknown) => void;
+}
+
+// 🎯 Carga dinámica de escáner sin 'any'
+const QrScanner = dynamic<QrScannerProps>(
+    () =>
+        import('@yudiel/react-qr-scanner').then((m) => {
+          const mod = m as unknown as {
+            Scanner?: ComponentType<QrScannerProps>;
+            default?: ComponentType<QrScannerProps>;
+          };
+          return mod.Scanner || mod.default || (() => null);
+        }),
     { ssr: false }
 );
 
@@ -39,7 +58,6 @@ export default function SalesPage() {
         const parsedCart = JSON.parse(savedCart);
         if (Array.isArray(parsedCart)) {
           setCart(parsedCart);
-          console.log('🔄 Carrito cargado desde localStorage:', parsedCart);
         }
       } catch (e) {
         console.error('Error al cargar carrito:', e);
@@ -274,13 +292,13 @@ export default function SalesPage() {
                 placeholder="Código de barras"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addToCart(barcode)}
+                onKeyDown={(e) => e.key === 'Enter' && void addToCart(barcode)}
                 className="flex-1 p-2 border rounded text-gray-900"
                 disabled={loading || isProcessing}
             />
             <div className="flex gap-2">
               <button
-                  onClick={() => addToCart(barcode)}
+                  onClick={() => void addToCart(barcode)}
                   disabled={loading || !barcode || isProcessing}
                   className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
               >
@@ -383,14 +401,20 @@ export default function SalesPage() {
                 </div>
                 <QrScanner
                     key={scannerKey}
-                    onScan={(result: any) => {
-                      const scannedText = typeof result === 'string' ? result : result?.[0]?.rawValue;
+                    onScan={(result: ScanResult) => {
+                      const scannedText =
+                          typeof result === 'string'
+                              ? result
+                              : Array.isArray(result)
+                                  ? result[0]?.rawValue
+                                  : undefined;
+
                       if (scannedText) {
-                        addToCart(scannedText);
+                        void addToCart(scannedText);
                         handleCloseScanner();
                       }
                     }}
-                    onError={(err: any) => console.error('Scanner error:', err)}
+                    onError={(err: unknown) => console.error('Scanner error:', err)}
                 />
                 <p className="text-sm text-gray-500 mt-2 text-center">
                   Apunta la cámara al código de barras
