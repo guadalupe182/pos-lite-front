@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import CashStatusBadge from '@/components/CashStatusBadge';
 import { useCash } from '@/contexts/CashContext';
+import { HasFlag } from "@/components/HasFlag";
 
 export default function Navbar() {
   const { isOpen } = useCash();
@@ -23,6 +24,19 @@ export default function Navbar() {
             <Link href="/checkout" className="hover:text-sky-300 transition-colors">
               Ventas
             </Link>
+
+              {/*Enlaces protegidos por Feature Flags*/}
+              <HasFlag name={"MULTI_CASH"}>
+                  <Link href="/cash/multi-turn" className="hover:text-sky-300 transition-colors">
+                    Turnos
+                  </Link>
+              </HasFlag>
+
+              <HasFlag name={"LOYALTY"}>
+                  <Link href="/loyalty" className="hover:text-sky-300 transition-colors">
+                      Puntos
+                  </Link>
+              </HasFlag>
           </div>
         </div>
 

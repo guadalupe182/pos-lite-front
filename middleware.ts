@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { decodeJwt } from "jose"; // 1. Importación para decodificar el token en Edge
 
-// Rutas estrictamente protegidas
+// Rutas estrictamente protegidas por autenticación básica
 const protectedRoutes = [
   '/',
   '/products',
@@ -11,46 +12,62 @@ const protectedRoutes = [
   '/checkout'
 ];
 
+// 2. Mapeo de rutas que requieren un módulo/licencia específica
+const flagProtectedRoutes: Record<string, string> = {
+  '/cash/multi-turn': 'MULTI_CASH',
+  '/loyalty': 'LOYALTY',
+};
+
 export function middleware(request: NextRequest) {
-  // 1. Obtener token de cookie (o header authorization si aplicara)
   const token = request.cookies.get('access_token')?.value;
   const { pathname } = request.nextUrl;
 
-  // 2. Excepciones explícitas: Ignorar retornos de Mercado Pago
+  // Excepciones explícitas: Ignorar retornos de Mercado Pago
   if (pathname.startsWith('/payment/')) {
     return NextResponse.next();
   }
 
-  // 3. Ver si la ruta actual es una ruta protegida
   const isProtectedRoute = protectedRoutes.some(
-    (route) => pathname === route || (route !== '/' && pathname.startsWith(route + '/'))
+      (route) => pathname === route || (route !== '/' && pathname.startsWith(route + '/'))
   );
 
-  // 4. Redirigir a /login si NO hay token y quiere entrar a ruta protegida
-  if (!token && isProtectedRoute) {
+  const requiredFlag = flagProtectedRoutes[pathname];
+
+  // 3. Si NO hay token y la ruta es protegida (por auth básica o por flag), mandar a /login
+  if (!token && (isProtectedRoute || requiredFlag)) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('returnUrl', pathname); // Guarda a dónde quería ir
+    loginUrl.searchParams.set('returnUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // 5. Redirigir al inicio (/) si YA hay token e intenta ir a login/register
+  // 4. Redirigir al inicio (/) si YA hay token e intenta ir a login/register
   if (token && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // 5. Validación de Licencias / Feature Flags
+  if (token && requiredFlag) {
+    try {
+      const payload = decodeJwt(token);
+      const userFlags = (payload.features as string[]) || [];
+
+      // Si no tiene la flag requerida, lo enviamos a la pantalla de Upgrade
+      if (!userFlags.includes(requiredFlag)) {
+        const upgradeUrl = new URL('/upgrade-plan', request.url);
+        upgradeUrl.searchParams.set('required', requiredFlag);
+        return NextResponse.redirect(upgradeUrl);
+      }
+    } catch {
+      // Si el token expiró o no es válido, a login
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   return NextResponse.next();
 }
 
-// 🎯 Matcher Corregido: Excluye archivos estáticos, API y assets de Next.js
 export const config = {
   matcher: [
-    /*
-     * Coincide con todas las rutas excepto las que empiezan con:
-     * - api (rutas de API)
-     * - _next/static (archivos estáticos compilados)
-     * - _next/image (optimización de imágenes)
-     * - favicon.ico, manifest, imágenest (pNG, svg, etc.)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
