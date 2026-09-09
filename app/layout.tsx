@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { CashProvider } from "@/contexts/CashContext";
 import { FlagProvider } from "@/contexts/FlagContext";
 
@@ -30,12 +31,14 @@ export default function RootLayout({
         <body
             className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100`}
         >
-        <FlagProvider>
-            <CashProvider>
-                <Navbar />
-                <main>{children}</main>
-            </CashProvider>
-        </FlagProvider>
+        <AuthProvider>
+            <FlagProvider>
+                <CashProvider>
+                    <Navbar />
+                    <main>{children}</main>
+                </CashProvider>
+            </FlagProvider>
+        </AuthProvider>
         </body>
         </html>
     );
