@@ -43,35 +43,31 @@ export interface DailySummaryDto {
 }
 
 // ==================== AUTH ====================
-// Guardar token después del login (en sessionStorage y Cookie)
+// Guardar token después del login en localStorage y Cookie
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
-    // FIX: Limpiamos el prefijo 'Bearer ' por si el backend ya lo incluye en su respuesta
     const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
 
-    sessionStorage.setItem('access_token', cleanToken);
-    // Guardar también en Cookie para que el middleware de Next.js lo reconozca
-    // Ajustado a SameSite=None para compatibilidad cross-site (Vercel -> OCI)
+    localStorage.setItem('access_token', cleanToken);
     document.cookie = `access_token=${cleanToken}; path=/; max-age=86400; SameSite=None; Secure`;
   }
 }
 
-// Obtener token (Busca en sessionStorage y cae a Cookies si no está)
+// Obtener token desde localStorage (o Cookie como respaldo)
 export function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
-    return sessionStorage.getItem('access_token') || getCookie('access_token');
+    return localStorage.getItem('access_token') || getCookie('access_token');
   }
   return null;
 }
 
 export function removeAuthToken() {
   if (typeof window !== 'undefined') {
-    sessionStorage.removeItem('access_token');
+    localStorage.removeItem('access_token');
     document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';
   }
 }
 
-// Auxiliar para leer cookie en el cliente
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const value = `; ${document.cookie}`;
@@ -85,15 +81,12 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
   const url = `${API_BASE}${cleanEndpoint}`;
   const token = getAuthToken();
 
-  // Normalizar Headers
   const headers: Record<string, string> = {};
 
-  // Solo agregar Content-Type si el body NO es FormData
   if (!(options?.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 
-  // Copiar headers existentes
   if (options?.headers) {
     if (options.headers instanceof Headers) {
       options.headers.forEach((value, key) => {
@@ -107,28 +100,25 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
       Object.assign(headers, options.headers);
     }
   }
-// Agregar Token de Autenticación
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(url, {
     ...options,
-    credentials: 'omit', // Ya no usamos cookies
+    credentials: 'omit',
     headers,
   });
 
-  // Manejo de expiración de sesión (Solo 401)
-  //  FIX: NO desloguear en 403 (Forbidden - Falta de roles), eso debe manejarlo la UI.
   if (response.status === 401) {
     console.error(`Error 401 detectado al llamar a: ${url}. Destruyendo sesión y redirigiendo...`);
     removeAuthToken();
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-     window.location.href = '/login';
+      window.location.href = '/login';
     }
   }
 
-  // Manejo seguro de errores sin romper el Stream
   if (!response.ok) {
     let errorMessage = `HTTP ${response.status} (${response.statusText})`;
     try {
@@ -185,7 +175,6 @@ export async function isCashOpen(): Promise<boolean> {
 }
 
 // ==================== NOTIFICACIONES ====================
-
 export interface Notification {
   id: number;
   type: 'STOCK_LOW' | 'CASH_LOW';

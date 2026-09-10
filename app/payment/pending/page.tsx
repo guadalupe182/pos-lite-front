@@ -43,7 +43,6 @@ function PaymentPendingContent() {
 export default function PaymentPendingPage() {
   return (
       <div className="min-h-screen bg-slate-50">
-        <Navbar />
         <Suspense fallback={
           <div className="min-h-screen flex items-center justify-center text-slate-500 text-xs font-medium animate-pulse">
             Cargando estado del pago...
