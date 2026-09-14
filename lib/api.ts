@@ -1,4 +1,4 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.guadaluperosas.com').replace(/\/$/, '');
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.gdevsoftware.com').replace(/\/$/, '');
 
 // ==================== TIPOS ====================
 export interface CashSession {
