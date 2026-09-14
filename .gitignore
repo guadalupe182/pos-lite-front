@@ -45,3 +45,8 @@ scripts-Tests/
 .idea/
 .vscode/
 *.iml
+# Backups locales (no versionar)
+*.bak
+*.bak-*
+*.backup
+*.old
