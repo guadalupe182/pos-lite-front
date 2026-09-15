@@ -54,3 +54,8 @@ scripts-Tests/
 # Aider AI (desconectado temporalmente)
 .aider*
 aider_batch_run.log
+
+# PWA auto-generated (next-pwa)
+public/sw.js
+public/workbox-*.js
+public/swe-worker-*.js
