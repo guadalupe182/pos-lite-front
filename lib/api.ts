@@ -1,3 +1,6 @@
+// Forzando nueva compilación - 21 sep 
+
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.gdevsoftware.com').replace(/\/$/, '');
 
 // ==================== TIPOS ====================
