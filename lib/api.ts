@@ -202,3 +202,4 @@ export async function markNotificationAsRead(id: number): Promise<void> {
 export async function deleteNotification(id: number): Promise<void> {
   return apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res => res.json());
 }
+// Force rebuild: 1790626426
