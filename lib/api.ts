@@ -1,5 +1,4 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.guadaluperosas.com').replace(/\/$/, '');
-
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
 // ==================== TIPOS ====================
 export interface CashSession {
   id: number;
