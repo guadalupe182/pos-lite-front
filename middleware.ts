@@ -5,6 +5,7 @@ import { decodeJwt } from "jose"; // 1. Importación para decodificar el token e
 // Rutas estrictamente protegidas por autenticación básica
 const protectedRoutes = [
   '/',
+  '/dashboard',
   '/products',
   '/inventory',
   '/sales',

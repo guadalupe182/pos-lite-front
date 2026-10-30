@@ -16,7 +16,7 @@ export default function Navbar() {
     const [isOpenModalOpen, setIsOpenModalOpen] = useState(false);
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
 
-    const { isOpen } = useCash();
+    const { isOpen, refresh } = useCash();
     const { user } = useAuth();
 
     useEffect(() => {
@@ -37,6 +37,11 @@ export default function Navbar() {
         );
     }
 
+    const handleCloseCashSuccess = () => {
+        setIsCloseModalOpen(false);
+        void refresh();
+    };
+
     return (
         <>
             <nav className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
@@ -50,6 +55,9 @@ export default function Navbar() {
                         </Link>
                         <Link href="/products" className="hover:text-sky-300 transition-colors">
                             Productos
+                        </Link>
+                        <Link href="/dashboard" className="hover:text-sky-300 transition-colors">
+                            Mi Licencia
                         </Link>
 
                         <HasFlag name={"MULTI_CASH"}>
@@ -102,7 +110,7 @@ export default function Navbar() {
             <CloseCashModal
                 isOpen={isCloseModalOpen}
                 onClose={() => setIsCloseModalOpen(false)}
-                onSuccess={() => setIsCloseModalOpen(false)}
+                onSuccess={handleCloseCashSuccess}
             />
         </>
     );
