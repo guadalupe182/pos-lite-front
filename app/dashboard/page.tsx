@@ -1,16 +1,10 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 const LICENSE_STORAGE_KEY = 'gdev_license_key';
 const LICENSE_VALIDATION_URL = 'https://api.gdevsoftware.com/api/v1/licenses/validate';
-
-interface LicenseApiResponse {
-  plan?: string;
-  expiresAt?: string;
-  expirationDate?: string;
-  expiryDate?: string;
-}
+const LICENSE_REQUEST_TIMEOUT_MS = 10000;
 
 interface LicenseDetails {
   plan: string;
@@ -30,11 +24,51 @@ function formatExpirationDate(value: string): string {
   return new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' }).format(date);
 }
 
+function parseLicenseDetails(value: unknown): LicenseDetails | null {
+  if (typeof value !== 'object' || value === null) return null;
+
+  const data = value as Record<string, unknown>;
+  const plan = typeof data.plan === 'string' ? data.plan.trim() : '';
+  const expirationValue = data.expiresAt ?? data.expirationDate ?? data.expiryDate;
+  const expirationDate = typeof expirationValue === 'string' ? expirationValue.trim() : '';
+
+  if (!plan || !expirationDate) return null;
+
+  return { plan, expirationDate };
+}
+
+function readStoredLicenseKey(): string | null {
+  try {
+    return window.localStorage.getItem(LICENSE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeLicenseKey(licenseKey: string): boolean {
+  try {
+    window.localStorage.setItem(LICENSE_STORAGE_KEY, licenseKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeStoredLicenseKey(): void {
+  try {
+    window.localStorage.removeItem(LICENSE_STORAGE_KEY);
+  } catch {
+    // La licencia inválida se mantiene en memoria solo si el navegador bloquea el almacenamiento.
+  }
+}
+
 export default function LicenseDashboardPage() {
   const [licenseKey, setLicenseKey] = useState('');
   const [license, setLicense] = useState<LicenseDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
 
   const validateLicense = useCallback(async (rawKey: string) => {
     const normalizedKey = rawKey.trim().toUpperCase();
@@ -43,6 +77,15 @@ export default function LicenseDashboardPage() {
       setError('Ingresa tu llave de licencia.');
       return;
     }
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const requestId = ++requestIdRef.current;
+    const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        LICENSE_REQUEST_TIMEOUT_MS
+    );
 
     setLoading(true);
     setError('');
@@ -55,11 +98,14 @@ export default function LicenseDashboardPage() {
           {
             method: 'GET',
             headers: { Accept: 'application/json' },
+            signal: controller.signal,
           }
       );
 
+      if (requestId !== requestIdRef.current) return;
+
       if (response.status === 403 || response.status === 404) {
-        window.localStorage.removeItem(LICENSE_STORAGE_KEY);
+        removeStoredLicenseKey();
         setError('Licencia inválida o expirada.');
         return;
       }
@@ -69,26 +115,53 @@ export default function LicenseDashboardPage() {
         return;
       }
 
-      const data = (await response.json()) as LicenseApiResponse;
-      const expirationDate = data.expiresAt || data.expirationDate || data.expiryDate || '';
+      const data: unknown = await response.json();
+      if (requestId !== requestIdRef.current) return;
 
-      window.localStorage.setItem(LICENSE_STORAGE_KEY, normalizedKey);
-      setLicense({
-        plan: data.plan || 'No especificado',
-        expirationDate,
-      });
-    } catch {
-      setError('No fue posible conectar con el servicio de licencias. Revisa tu conexión e inténtalo de nuevo.');
+      const licenseDetails = parseLicenseDetails(data);
+      if (!licenseDetails) {
+        setError('El servicio de licencias devolvió una respuesta incompleta o inválida.');
+        return;
+      }
+
+      if (!storeLicenseKey(normalizedKey)) {
+        setError('La licencia es válida, pero el navegador no permitió guardarla. Habilita el almacenamiento e inténtalo de nuevo.');
+        return;
+      }
+
+      setLicense(licenseDetails);
+    } catch (requestError) {
+      if (requestId !== requestIdRef.current) return;
+
+      if (requestError instanceof Error && requestError.name === 'AbortError') {
+        setError('La validación tardó demasiado. Revisa tu conexión e inténtalo de nuevo.');
+      } else if (requestError instanceof SyntaxError) {
+        setError('El servicio de licencias devolvió una respuesta inválida.');
+      } else {
+        setError('No fue posible conectar con el servicio de licencias. Revisa tu conexión e inténtalo de nuevo.');
+      }
     } finally {
-      setLoading(false);
+      window.clearTimeout(timeoutId);
+
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+      }
     }
   }, []);
 
   useEffect(() => {
-    const savedKey = window.localStorage.getItem(LICENSE_STORAGE_KEY);
+    const savedKey = readStoredLicenseKey();
     if (savedKey) {
       void validateLicense(savedKey);
     }
+
+    return () => {
+      requestIdRef.current += 1;
+      abortControllerRef.current?.abort();
+    };
   }, [validateLicense]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -96,6 +169,12 @@ export default function LicenseDashboardPage() {
     if (!loading) {
       void validateLicense(licenseKey);
     }
+  };
+
+  const handleLicenseKeyChange = (value: string) => {
+    setLicenseKey(value);
+    setLicense(null);
+    setError('');
   };
 
   return (
@@ -123,7 +202,7 @@ export default function LicenseDashboardPage() {
                     id="licenseKey"
                     type="text"
                     value={licenseKey}
-                    onChange={(event) => setLicenseKey(event.target.value)}
+                    onChange={(event) => handleLicenseKeyChange(event.target.value)}
                     placeholder="GDEV-XXXX"
                     autoComplete="off"
                     spellCheck={false}

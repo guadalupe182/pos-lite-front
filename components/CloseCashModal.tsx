@@ -21,15 +21,26 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
   const { session, closeCash, refresh } = useCash();
 
   useEffect(() => {
-    if (isOpen) {
-      setStep('confirm');
-      setSummary(null);
-      setFinalCash('');
-      setError(null);
-      getDailySummary()
-        .then(data => setDailyTotalSales(data.totalSales || 0))
-        .catch(() => setDailyTotalSales(0));
-    }
+    if (!isOpen) return;
+
+    let active = true;
+    setStep('confirm');
+    setSummary(null);
+    setFinalCash('');
+    setError(null);
+    setDailyTotalSales(0);
+
+    getDailySummary()
+      .then(data => {
+        if (active) setDailyTotalSales(data.totalSales || 0);
+      })
+      .catch(() => {
+        if (active) setDailyTotalSales(0);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [isOpen]);
 
   // Función para convertir string a número (elimina comas)
