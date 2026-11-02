@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { useCash } from '@/contexts/CashContext';
-import Navbar from '@/components/Navbar';
 import OpenCashModal from '@/components/OpenCashModal';
 import {
   Chart as ChartJS,
@@ -118,7 +117,6 @@ export default function HomePage() {
   if (loading || cashLoading) {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
-          <Navbar />
           <div className="flex justify-center items-center h-64">
             <div className="text-slate-400 font-semibold text-sm animate-pulse">
               Cargando dashboard...
@@ -130,7 +128,6 @@ export default function HomePage() {
 
   return (
       <>
-        <Navbar />
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-800">

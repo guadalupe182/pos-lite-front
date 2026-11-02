@@ -150,7 +150,6 @@ export default function ProductsPage() {
   if (loading) {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800">
-          <Navbar />
           <div className="flex justify-center items-center h-64">
             <div className="text-slate-500 font-medium text-sm animate-pulse">Cargando catálogo de productos...</div>
           </div>
@@ -160,7 +159,6 @@ export default function ProductsPage() {
 
   return (
       <div className="min-h-screen bg-slate-50 text-slate-900">
-        <Navbar />
 
         <main className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
 

@@ -34,7 +34,6 @@ export default function CheckoutPage() {
   if (loading) {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800">
-          <Navbar />
           <div className="flex justify-center items-center h-64">
             <div className="text-slate-500 font-medium text-sm animate-pulse">Cargando resumen de compra...</div>
           </div>
@@ -44,7 +43,6 @@ export default function CheckoutPage() {
 
   return (
       <div className="min-h-screen bg-slate-50 text-slate-900">
-        <Navbar />
 
         <main className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
 

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiFetch, setAuthToken } from '@/lib/api';
 import Link from 'next/link';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin123');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchParams = useSearchParams();
@@ -136,15 +138,30 @@ export default function LoginForm() {
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Contraseña
               </label>
-              <input
-                  type="password"
-                  placeholder="Contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
-                  required
-                  disabled={isSubmitting}
-              />
+              <div className="relative">
+                <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-3 pr-11 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                    required
+                    disabled={isSubmitting}
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword((currentValue) => !currentValue)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600 transition-colors"
+                    disabled={isSubmitting}
+                >
+                    {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                        <EyeIcon className="h-5 w-5" />
+                    )}
+                </button>
+              </div>
             </div>
           </div>
 
