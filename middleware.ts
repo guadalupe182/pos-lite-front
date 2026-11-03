@@ -17,6 +17,8 @@ const protectedRoutes = [
 const flagProtectedRoutes: Record<string, string> = {
   '/cash/multi-turn': 'MULTI_CASH',
   '/loyalty': 'LOYALTY',
+  '/dashboard/fit': 'FIT',
+  '/dashboard/style': 'STYLE',
 };
 
 export function middleware(request: NextRequest) {

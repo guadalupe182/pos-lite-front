@@ -1,9 +1,10 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { getApiUrl } from '@/lib/api';
 
 const LICENSE_STORAGE_KEY = 'gdev_license_key';
-const LICENSE_VALIDATION_URL = '/api/v1/licenses/validate';
+const LICENSE_VALIDATION_URL = getApiUrl('/api/v1/licenses/validate');
 const LICENSE_REQUEST_TIMEOUT_MS = 10000;
 
 interface LicenseDetails {

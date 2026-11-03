@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { useCash } from '@/contexts/CashContext';
 import OpenCashModal from '@/components/OpenCashModal';
+import DashboardCard from '@/components/DashboardCard';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -134,6 +135,21 @@ export default function HomePage() {
               Bienvenido{userName ? `, ${userName}` : ''} 👋
             </h1>
             <p className="text-gray-600 mt-1">Aquí tienes un resumen de tu negocio</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2">
+            <DashboardCard
+              title="Ingresos del mes (demo)"
+              value="$12,450.00"
+              description="Maqueta visual con datos de ejemplo"
+              accent="sky"
+            />
+            <DashboardCard
+              title="Membresías activas (demo)"
+              value="38"
+              description="Maqueta visual con datos de ejemplo"
+              accent="emerald"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

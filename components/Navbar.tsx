@@ -24,8 +24,8 @@ export default function Navbar() {
         return () => clearTimeout(timer);
     }, []);
 
-    // 3. Si estamos en /login o /register, no renderizar el Navbar
-    if (pathname === '/login' || pathname === '/register') {
+    // 3. Si estamos en una ruta pública de acceso, no renderizar el Navbar
+    if (pathname === '/login' || pathname === '/register' || pathname === '/activate') {
         return null;
     }
 
@@ -59,6 +59,18 @@ export default function Navbar() {
                         <Link href="/dashboard" className="hover:text-sky-300 transition-colors">
                             Mi Licencia
                         </Link>
+
+                        <HasFlag name={"FIT"}>
+                            <Link href="/dashboard/fit" className="hover:text-sky-300 transition-colors">
+                                POS Fit
+                            </Link>
+                        </HasFlag>
+
+                        <HasFlag name={"STYLE"}>
+                            <Link href="/dashboard/style" className="hover:text-sky-300 transition-colors">
+                                POS Style
+                            </Link>
+                        </HasFlag>
 
                         <HasFlag name={"MULTI_CASH"}>
                             <Link href="/cash/multi-turn" className="hover:text-sky-300 transition-colors">
