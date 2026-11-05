@@ -9,7 +9,8 @@ const protectedRoutes = [
   '/inventory',
   '/sales',
   '/sales-report',
-  '/checkout'
+  '/checkout',
+  '/license'
 ];
 
 // 2. Mapeo de rutas que requieren un módulo/licencia específica
