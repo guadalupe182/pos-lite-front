@@ -44,15 +44,10 @@ export default function RegisterPage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl border border-slate-200/90 shadow-xl w-full max-w-md space-y-5">
 
-          {/* Header Branding GDEV */}
+          {/* Header Branding SIPOVAD */}
           <div className="text-center space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center font-black text-white text-lg shadow-md mx-auto">
-              G
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">Gdev POS <span className="text-sky-600 font-semibold">Lite</span></h1>
-              <p className="text-xs text-slate-500">Crear una nueva cuenta de acceso al sistema</p>
-            </div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">SIPOVAD</h1>
+            <p className="text-xs text-slate-500">Crear una nueva cuenta de acceso al sistema</p>
           </div>
 
           {/* Banner informativo para accesos de prueba */}

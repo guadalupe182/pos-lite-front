@@ -162,7 +162,7 @@ export default function ProductsPage() {
 
         <main className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
 
-          {/* Encabezado GDEV */}
+          {/* Encabezado SIPOVAD */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 uppercase tracking-wide mb-1">

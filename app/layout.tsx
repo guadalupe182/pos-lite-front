@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Gdev POS Lite",
-    description: "Sistema de punto de venta omnicanal por GDEV Software Solutions",
+    title: "SIPOVAD - Punto de Venta Web",
+    description: "Sistema de punto de venta omnicanal - SIPOVAD",
 };
 
 export default function RootLayout({

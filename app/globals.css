@@ -2,9 +2,9 @@
 
 @layer base {
   :root {
-    --gdev-navy: #090d16;
-    --gdev-blue: #0284c7;
-    --gdev-cyan: #38bdf8;
+    --sipovad-navy: #090d16;
+    --sipovad-blue: #0284c7;
+    --sipovad-cyan: #38bdf8;
     --background: #f8fafc;
     --foreground: #0f172a;
   }
@@ -39,7 +39,7 @@ input[type="date"] {
   position: relative;
 }
 
-/* Personalización del Scrollbar estilo GDEV */
+/* Personalización del Scrollbar estilo SIPOVAD */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

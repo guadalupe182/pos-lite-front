@@ -32,7 +32,7 @@ export default function Navbar() {
     if (!mounted) {
         return (
             <nav className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shadow-md h-16">
-                <span className="text-xl font-black text-sky-400">POS Lite</span>
+                <span className="text-xl font-black text-sky-400">SIPOVAD</span>
             </nav>
         );
     }
@@ -42,7 +42,7 @@ export default function Navbar() {
             <nav className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
                 <div className="flex items-center gap-8">
                     <Link href="/" className="text-xl font-black text-sky-400 tracking-tight">
-                        POS Lite
+                        SIPOVAD
                     </Link>
                     <div className="flex gap-4 text-sm font-semibold">
                         <Link href="/sales" className="hover:text-sky-300 transition-colors">

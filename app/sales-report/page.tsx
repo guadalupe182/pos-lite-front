@@ -155,14 +155,14 @@ export default function SalesReportPage() {
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `reporte_ventas_gdev_${fromDate}_${toDate}.xlsx`;
+    anchor.download = `reporte_ventas_sipovad_${fromDate}_${toDate}.xlsx`;
     anchor.click();
     window.URL.revokeObjectURL(url);
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF() as ExtendedJSPDF;
-    doc.text(`GDEV POS - Reporte de Ventas (${fromDate} al ${toDate})`, 14, 16);
+    doc.text(`SIPOVAD - Reporte de Ventas (${fromDate} al ${toDate})`, 14, 16);
 
     const tableData = sales.map((sale) => [
       sale.id,
@@ -185,7 +185,7 @@ export default function SalesReportPage() {
       doc.addImage(imgData, "PNG", 15, finalY + 10, 180, 90);
     }
 
-    doc.save(`reporte_ventas_gdev_${fromDate}_${toDate}.pdf`);
+    doc.save(`reporte_ventas_sipovad_${fromDate}_${toDate}.pdf`);
   };
 
   return (

@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Gdev POS Lite - Sistema de Ventas',
-    short_name: 'Gdev POS',
-    description: 'Sistema de punto de venta omnicanal por GDEV Software Solutions',
+    name: 'SIPOVAD - Punto de Venta Web',
+    short_name: 'SIPOVAD',
+    description: 'Sistema de punto de venta omnicanal - SIPOVAD',
     start_url: '/',
     scope: '/',
     display: 'standalone',

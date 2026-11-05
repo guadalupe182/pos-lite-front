@@ -119,14 +119,14 @@ export default function InventoryPage() {
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `inventario_gdev_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    anchor.download = `inventario_sipovad_${new Date().toISOString().slice(0, 10)}.xlsx`;
     anchor.click();
     window.URL.revokeObjectURL(url);
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    doc.text("GDEV POS - Reporte de Inventario", 14, 16);
+    doc.text("SIPOVAD - Reporte de Inventario", 14, 16);
     const tableData = filteredItems.map((item) => [
       item.barcode,
       item.name,
@@ -139,7 +139,7 @@ export default function InventoryPage() {
       body: tableData,
       startY: 22,
     });
-    doc.save(`inventario_gdev_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`inventario_sipovad_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   if (loading) {
@@ -157,7 +157,7 @@ export default function InventoryPage() {
 
         <main className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
 
-          {/* Encabezado GDEV */}
+          {/* Encabezado SIPOVAD */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 uppercase tracking-wide mb-1">
