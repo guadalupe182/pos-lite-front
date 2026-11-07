@@ -246,6 +246,27 @@ La aplicación implementa:
 
 ---
 
+# 🔑 Validación de Licencias (Feature Flags)
+
+El sistema desbloquea módulos (FIT, STYLE, etc.) mediante una licencia validada en la pantalla **Mi Licencia GDEV** (`/dashboard`).
+
+## Flujo de validación
+
+1. El usuario ingresa su llave en `/dashboard`. El frontend llama a `GET /api/v1/licenses/validate/{key}`.
+2. Si el backend responde `200 OK` con `{ status, planName, expirationDate, tenantId }`, la llave se guarda en `localStorage` bajo la clave `gdev_license_key`.
+3. Además, el plan y su fecha de expiración se persisten en **dos lugares** para que sobrevivan a recargas y sean legibles por el middleware Edge:
+   - `localStorage` → clave `gdev_license_flags` (JSON `{ "FIT": "2027-12-31T00:00:00", "STYLE": "..." }`).
+   - Cookie `gdev_license_flags` → mismo JSON URL-encoded.
+4. El `FlagContext` fusiona los permisos del JWT (`access_token.features`) con los flags de la licencia, filtrando los que ya expiraron, y expone `hasFlag(flag)`.
+5. El middleware Edge lee la cookie `gdev_license_flags`, la fusiona con `payload.features` del JWT y permite/bloquea rutas como `/dashboard/fit` o `/dashboard/style` según el flag requerido y su fecha de expiración.
+
+## Consideraciones
+
+- Cada plan tiene su propia fecha de expiración: si FIT caduca, STYLE sigue disponible.
+- Los flags se acumulan (merge) al validar varias licencias; no se sobrescriben.
+- Al invalidar una licencia (403/404) se limpian tanto la llave como los flags.
+- ⚠️ **TODO (Fase 2):** la cookie no está firmada. Validar firma criptográfica o migrar a JWT con features antes de producción.
+
 # 📱 Progressive Web App
 
 La aplicación puede instalarse como una aplicación nativa.
