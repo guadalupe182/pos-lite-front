@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '@/lib/api';
+import { persistLicenseFlags, clearLicenseFlags } from '@/contexts/FlagContext';
 
 const LICENSE_STORAGE_KEY = 'gdev_license_key';
 const LICENSE_VALIDATION_URL = getApiUrl('/api/v1/licenses/validate');
@@ -116,6 +117,7 @@ export default function LicenseDashboardPage() {
 
       if (response.status === 403 || response.status === 404) {
         removeStoredLicenseKey();
+        clearLicenseFlags();
         setError('Licencia inválida o expirada.');
         return;
       }
@@ -138,6 +140,9 @@ export default function LicenseDashboardPage() {
         setError('La licencia es válida, pero el navegador no permitió guardarla. Habilita el almacenamiento e inténtalo de nuevo.');
         return;
       }
+
+      // Conectar la licencia validada con los permisos globales (FlagContext/middleware)
+      persistLicenseFlags({ [licenseDetails.planName.toUpperCase()]: licenseDetails.expirationDate });
 
       setLicense(licenseDetails);
     } catch (requestError) {
