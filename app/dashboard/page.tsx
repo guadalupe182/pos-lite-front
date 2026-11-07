@@ -8,12 +8,10 @@ const LICENSE_VALIDATION_URL = getApiUrl('/api/v1/licenses/validate');
 const LICENSE_REQUEST_TIMEOUT_MS = 10000;
 
 interface LicenseDetails {
-  licenseKey: string;
-  clientEmail: string;
-  planId: string;
-  startDate: string;
-  expirationDate: string;
   status: string;
+  planName: string;
+  expirationDate: string;
+  tenantId: string;
 }
 
 function formatExpirationDate(value: string): string {
@@ -33,23 +31,19 @@ function parseLicenseDetails(value: unknown): LicenseDetails | null {
   if (typeof value !== 'object' || value === null) return null;
 
   const data = value as Record<string, unknown>;
-  const licenseKey = typeof data.licenseKey === 'string' ? data.licenseKey.trim() : '';
-  const clientEmail = typeof data.clientEmail === 'string' ? data.clientEmail.trim() : '';
-  const planId = typeof data.planId === 'string' ? data.planId.trim() : '';
-  const startDate = typeof data.startDate === 'string' ? data.startDate.trim() : '';
+  const status = typeof data.status === 'string' ? data.status.trim() : '';
+  const planName = typeof data.planName === 'string' ? data.planName.trim() : '';
   const expirationValue = data.expirationDate;
   const expirationDate = typeof expirationValue === 'string' ? expirationValue.trim() : '';
-  const status = typeof data.status === 'string' ? data.status.trim() : '';
+  const tenantId = typeof data.tenantId === 'string' ? data.tenantId.trim() : '';
 
-  if (!licenseKey || !clientEmail || !planId || !startDate || !expirationDate || !status) return null;
+  if (!status || !planName || !expirationDate || !tenantId) return null;
 
   return {
-    licenseKey,
-    clientEmail,
-    planId,
-    startDate,
-    expirationDate,
     status,
+    planName,
+    expirationDate,
+    tenantId,
   };
 }
 
@@ -263,7 +257,7 @@ export default function LicenseDashboardPage() {
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 rounded-xl border border-slate-200 p-4">
                   <div>
                     <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Plan</dt>
-                    <dd className="mt-1 text-base font-bold text-slate-900">{license.planId}</dd>
+                    <dd className="mt-1 text-base font-bold text-slate-900">{license.planName}</dd>
                   </div>
                   <div>
                     <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha de expiración</dt>
