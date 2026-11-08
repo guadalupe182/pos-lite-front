@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCash } from '@/contexts/CashContext';
-import { CashCloseReportDto, getDailySummary } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { CashCloseReportDto, getDailySummary, removeAuthToken } from '@/lib/api';
+import { clearLicenseFlags } from '@/contexts/FlagContext';
 
 interface CloseCashModalProps {
   isOpen: boolean;
@@ -19,6 +22,8 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
   const [step, setStep] = useState<'confirm' | 'summary'>('confirm');
   const [dailyTotalSales, setDailyTotalSales] = useState<number>(0); // 👈 número, no string
   const { session, closeCash, refresh } = useCash();
+  const { logout } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -81,6 +86,16 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
       const result = await closeCash(cashAmount);
       setSummary(result);
       setStep('summary');
+
+      // Cerrar la sesión del empleado al cerrar la caja (seguridad operativa)
+      removeAuthToken();
+      logout();
+      try {
+        window.localStorage.removeItem('gdev_license_key');
+      } catch {
+        // Ignorar si el storage está bloqueado
+      }
+      clearLicenseFlags();
     } catch (err: any) {
       const errorMessage = err?.message || 'Error al cerrar la caja';
       
@@ -101,7 +116,9 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
   };
 
   const handleDone = () => {
+    window.alert('Caja cerrada exitosamente. Por favor, inicie sesión para el siguiente turno.');
     onSuccess();
+    router.push('/login');
   };
 
   // === Paso de confirmación ===
