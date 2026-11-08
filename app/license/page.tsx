@@ -3,7 +3,11 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 
 const LICENSE_STORAGE_KEY = 'sipovad_license_key';
-const LICENSE_VALIDATION_URL = 'https://api.gdevsoftware.com/api/v1/licenses/validate';
+
+const LICENSE_VALIDATION_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/licenses/validate` 
+  : 'http://localhost:8080/api/v1/licenses/validate';
+
 
 interface LicenseApiResponse {
   plan?: string;
