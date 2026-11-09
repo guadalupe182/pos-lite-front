@@ -30,8 +30,10 @@ export default function HomePage() {
   const router = useRouter();
   const { isOpen, loading: cashLoading, refresh: refreshCashStatus } = useCash();
 
-  const [products, setProducts] = useState<any[]>([]);
-  const [recentSales, setRecentSales] = useState<any[]>([]);
+  type DashboardProduct = { id: number; name: string; stock: number; minStock: number };
+  type DashboardSale = { total?: number; saleDate?: string };
+  const [products, setProducts] = useState<DashboardProduct[]>([]);
+  const [recentSales, setRecentSales] = useState<DashboardSale[]>([]);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showMandatoryModal, setShowMandatoryModal] = useState(false);
@@ -89,7 +91,7 @@ export default function HomePage() {
 
   const salesByDay: { [key: string]: number } = {};
   recentSales.forEach((sale) => {
-    const date = new Date(sale.saleDate).toLocaleDateString('es-MX');
+    const date = new Date(sale.saleDate ?? '').toLocaleDateString('es-MX');
     salesByDay[date] = (salesByDay[date] || 0) + (sale.total || 0);
   });
 
