@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
       {
         source: '/api/:path*',
         // Ahora TODO va por Nginx, y Nginx decide qué mandar al 8090 y qué al 8087
-        destination: 'https://pos-sandbox-api.gdevsoftware.com/api/:path*', 
+        destination: 'https://api.gdevsoftware.com/api/:path*', 
       },
     ];
   },
