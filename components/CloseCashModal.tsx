@@ -96,8 +96,11 @@ export default function CloseCashModal({ isOpen, onClose, onSuccess }: CloseCash
         // Ignorar si el storage está bloqueado
       }
       clearLicenseFlags();
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Error al cerrar la caja';
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Error al cerrar la caja';
       
       // Sincronización forzada para errores de estado
       if (
