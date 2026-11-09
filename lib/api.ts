@@ -1,4 +1,10 @@
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
+
+export function getApiUrl(endpoint: string): string {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${API_BASE}${cleanEndpoint}`;
+}
+
 // ==================== TIPOS ====================
 export interface CashSession {
   id: number;
@@ -76,8 +82,7 @@ function getCookie(name: string): string | null {
 }
 
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const url = `${API_BASE}${cleanEndpoint}`;
+  const url = getApiUrl(endpoint);
   const token = getAuthToken();
 
   const headers: Record<string, string> = {};

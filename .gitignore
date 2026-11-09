@@ -44,4 +44,4 @@ scripts-Tests/
 # IDEs and Editors
 .idea/
 .vscode/
-*.iml
+*.imlpublic/sw.js

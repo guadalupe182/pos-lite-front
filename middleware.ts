@@ -17,7 +17,39 @@ const protectedRoutes = [
 const flagProtectedRoutes: Record<string, string> = {
   '/cash/multi-turn': 'MULTI_CASH',
   '/loyalty': 'LOYALTY',
+  '/dashboard/fit': 'FIT',
+  '/dashboard/style': 'STYLE',
 };
+
+interface LicenseFlagEntry {
+    [flag: string]: string;
+}
+
+function readLicenseFlagsCookie(raw: string | undefined): LicenseFlagEntry {
+    if (!raw) return {};
+    try {
+        const decoded = decodeURIComponent(raw);
+        const parsed: unknown = JSON.parse(decoded);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            return {};
+        }
+        const result: LicenseFlagEntry = {};
+        for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof value === 'string') {
+                result[key] = value;
+            }
+        }
+        return result;
+    } catch {
+        return {};
+    }
+}
+
+function isExpired(expiration: string): boolean {
+    const date = new Date(expiration);
+    if (Number.isNaN(date.getTime())) return true;
+    return date.getTime() <= Date.now();
+}
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
@@ -52,8 +84,15 @@ export function middleware(request: NextRequest) {
       const payload = decodeJwt(token);
       const userFlags = (payload.features as string[]) || [];
 
+      // Fusionar permisos del JWT con los de la licencia guardada en cookie
+      const licenseFlags = readLicenseFlagsCookie(request.cookies.get('gdev_license_flags')?.value);
+      const licenseFlagNames = Object.keys(licenseFlags).filter((flag) => !isExpired(licenseFlags[flag]));
+
+      const mergedFlags = Array.from(new Set([...userFlags, ...licenseFlagNames]));
+
+      // TODO(Fase 2): Las cookies no están firmadas. Validar firma criptográfica o migrar a JWT con features antes de salir a Producción.
       // Si no tiene la flag requerida, lo enviamos a la pantalla de Upgrade
-      if (!userFlags.includes(requiredFlag)) {
+      if (!mergedFlags.includes(requiredFlag)) {
         const upgradeUrl = new URL('/upgrade-plan', request.url);
         upgradeUrl.searchParams.set('required', requiredFlag);
         return NextResponse.redirect(upgradeUrl);

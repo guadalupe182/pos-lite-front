@@ -9,6 +9,7 @@ import {
   CashSession,
   CurrentSessionDto,
   CashCloseReportDto,
+  getAuthToken,
 } from '@/lib/api';
 
 interface CashContextType {
@@ -28,6 +29,13 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    if (!getAuthToken()) {
+      setIsOpen(false);
+      setSession(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [open, sessionData] = await Promise.all([
