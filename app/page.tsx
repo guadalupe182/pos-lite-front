@@ -49,7 +49,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const productsRes = await apiFetch('/api/products');
+        const productsRes = await apiFetch('/api/v1/products');
         if (productsRes.ok) {
           const productsData = await productsRes.json();
           setProducts(Array.isArray(productsData) ? productsData : []);
@@ -60,13 +60,13 @@ export default function HomePage() {
         sevenDaysAgo.setDate(today.getDate() - 7);
         const from = sevenDaysAgo.toISOString().split('T')[0] + 'T00:00:00Z';
         const to = today.toISOString().split('T')[0] + 'T23:59:59Z';
-        const salesRes = await apiFetch(`/api/sales/report?from=${from}&to=${to}`);
+        const salesRes = await apiFetch(`/api/v1/sales/report?from=${from}&to=${to}`);
         if (salesRes.ok) {
           const salesData = await salesRes.json();
           setRecentSales(Array.isArray(salesData) ? salesData : []);
         }
 
-        const meRes = await apiFetch('/api/auth/me');
+        const meRes = await apiFetch('/api/v1/auth/me');
         if (meRes.ok) {
           const meData = await meRes.json();
           if (meData?.email) {

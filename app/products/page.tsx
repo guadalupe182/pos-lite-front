@@ -119,7 +119,7 @@ export default function ProductsPage() {
 
     try {
       if (editingProduct) {
-        await apiFetch(`/api/products/${editingProduct.id}`, {
+        await apiFetch(`/api/v1/products/${editingProduct.id}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         });
@@ -140,7 +140,7 @@ export default function ProductsPage() {
     const confirmMsg = `¿Eliminar permanentemente "${productName}" del catálogo?\n\nEsta acción no se puede deshacer.`;
     if (!confirm(confirmMsg)) return;
     try {
-      await apiFetch(`/api/products/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/v1/products/${id}`, { method: "DELETE" });
       fetchData();
     } catch {
       alert("Error al intentar eliminar el producto.");

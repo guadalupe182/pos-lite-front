@@ -145,35 +145,35 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
 
 // ==================== CAJA ====================
 export async function getDailySummary(): Promise<DailySummaryDto> {
-  return apiFetch('/api/cash/daily-summary', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/v1/cash/daily-summary', { method: 'GET' }).then(res => res.json());
 }
 
 export async function closeCash(finalCash: number): Promise<CashCloseReportDto> {
-  return apiFetch('/api/cash/close', {
+  return apiFetch('/api/v1/cash/close', {
     method: 'POST',
     body: JSON.stringify({ finalCash }),
   }).then(res => res.json());
 }
 
 export async function isCashClosedToday(): Promise<boolean> {
-  return apiFetch('/api/cash/is-closed', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/v1/cash/is-closed', { method: 'GET' }).then(res => res.json());
 }
 
 export async function openCash(initialCash: number): Promise<CashSession> {
-  return apiFetch('/api/cash/open', {
+  return apiFetch('/api/v1/cash/open', {
     method: 'POST',
     body: JSON.stringify({ initialCash }),
   }).then(res => res.json());
 }
 
 export async function getCurrentCashSession(): Promise<CurrentSessionDto | null> {
-  return apiFetch('/api/cash/current-session', {
+  return apiFetch('/api/v1/cash/current-session', {
     method: 'GET',
   }).then(res => res.json());
 }
 
 export async function isCashOpen(): Promise<boolean> {
-  return apiFetch('/api/cash/is-open', {
+  return apiFetch('/api/v1/cash/is-open', {
     method: 'GET',
   }).then(res => res.json());
 }
@@ -189,17 +189,17 @@ export interface Notification {
 }
 
 export async function getNotifications(): Promise<Notification[]> {
-  return apiFetch('/api/notifications', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/v1/notifications', { method: 'GET' }).then(res => res.json());
 }
 
 export async function getUnreadNotifications(): Promise<Notification[]> {
-  return apiFetch('/api/notifications/unread', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/v1/notifications/unread', { method: 'GET' }).then(res => res.json());
 }
 
 export async function markNotificationAsRead(id: number): Promise<void> {
-  return apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' }).then(res => res.json());
+  return apiFetch(`/api/v1/notifications/${id}/read`, { method: 'PUT' }).then(res => res.json());
 }
 
 export async function deleteNotification(id: number): Promise<void> {
-  return apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res => res.json());
+  return apiFetch(`/api/v1/notifications/${id}`, { method: 'DELETE' }).then(res => res.json());
 }

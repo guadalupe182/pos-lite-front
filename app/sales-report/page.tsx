@@ -65,7 +65,7 @@ export default function SalesReportPage() {
     const to = `${toDate}T23:59:59Z`;
 
     try {
-      const res = await apiFetch(`/api/sales/report?from=${from}&to=${to}`);
+      const res = await apiFetch(`/api/v1/sales/report?from=${from}&to=${to}`);
       const data = await res.json();
       setSales(Array.isArray(data) ? data : []);
     } catch {
