@@ -22,7 +22,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await apiFetch('/api/auth/register', {
+      const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });

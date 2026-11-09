@@ -67,7 +67,7 @@ export default function SalesPage() {
 
   const fetchProductByBarcode = useCallback(async (code: string) => {
     try {
-      const res = await apiFetch(`/api/products/barcode/${encodeURIComponent(code)}`);
+      const res = await apiFetch(`/api/v1/products/barcode/${encodeURIComponent(code)}`);
       if (!res.ok) return null;
       return await res.json();
     } catch (error) {
@@ -98,7 +98,7 @@ export default function SalesPage() {
 
     let categoryId: number | undefined = undefined;
     try {
-      const res = await apiFetch('/api/categories');
+      const res = await apiFetch('/api/v1/categories');
       if (res.ok) {
         const categories = await res.json();
         if (categories && categories.length > 0) {
@@ -114,7 +114,7 @@ export default function SalesPage() {
           if (num === 0) {
             const newCategoryName = prompt('Nombre de la nueva categoría:');
             if (newCategoryName && newCategoryName.trim()) {
-              const createRes = await apiFetch('/api/categories', {
+              const createRes = await apiFetch('/api/v1/categories', {
                 method: 'POST',
                 body: JSON.stringify({ name: newCategoryName.trim() }),
               });
@@ -149,7 +149,7 @@ export default function SalesPage() {
     };
 
     try {
-      const res = await apiFetch('/api/products/adjust-by-barcode', {
+      const res = await apiFetch('/api/v1/products/adjust-by-barcode', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

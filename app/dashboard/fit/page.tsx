@@ -69,7 +69,7 @@ export default function FitPage() {
     setError('');
 
     try {
-      const response = await apiFetch('/api/memberships');
+      const response = await apiFetch('/api/v1/memberships');
       const data: unknown = await response.json();
       if (!Array.isArray(data)) {
         throw new Error('El servidor devolvió una lista de membresías inválida.');
@@ -178,7 +178,7 @@ export default function FitPage() {
     setError('');
 
     try {
-      await apiFetch(`/api/memberships/${membershipToDelete.id}`, { method: 'DELETE' });
+      await apiFetch(`/api/v1/memberships/${membershipToDelete.id}`, { method: 'DELETE' });
       setMembershipToDelete(null);
       await loadMemberships();
       setToast({ message: 'Membresía eliminada correctamente.', type: 'success' });

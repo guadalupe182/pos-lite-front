@@ -31,7 +31,7 @@ export default function LoginForm() {
     setError('');
 
     try {
-      const res = await apiFetch('/api/auth/login', {
+      const res = await apiFetch('/api/v1/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });

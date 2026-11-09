@@ -69,7 +69,7 @@ export default function StylePage() {
     setError('');
 
     try {
-      const response = await apiFetch('/api/boutique-items');
+      const response = await apiFetch('/api/v1/boutique-items');
       const data: unknown = await response.json();
       if (!Array.isArray(data)) {
         throw new Error('El servidor devolvió una lista de artículos inválida.');
@@ -184,7 +184,7 @@ export default function StylePage() {
     setError('');
 
     try {
-      await apiFetch(`/api/boutique-items/${itemToDelete.id}`, { method: 'DELETE' });
+      await apiFetch(`/api/v1/boutique-items/${itemToDelete.id}`, { method: 'DELETE' });
       setItemToDelete(null);
       await loadItems();
       setToast({ message: 'Artículo eliminado correctamente.', type: 'success' });

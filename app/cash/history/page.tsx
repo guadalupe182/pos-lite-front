@@ -1,15 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Navbar from '@/components/Navbar';
+import { useState } from 'react';
 
 export default function CashHistoryPage() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Aquí puedes implementar la llamada a un endpoint de historial si existe
-    setLoading(false);
-  }, []);
+  const [loading] = useState(false);
 
   if (loading) {
     return (

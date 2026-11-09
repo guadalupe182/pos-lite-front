@@ -30,8 +30,10 @@ export default function HomePage() {
   const router = useRouter();
   const { isOpen, loading: cashLoading, refresh: refreshCashStatus } = useCash();
 
-  const [products, setProducts] = useState<any[]>([]);
-  const [recentSales, setRecentSales] = useState<any[]>([]);
+  type DashboardProduct = { id: number; name: string; stock: number; minStock: number };
+  type DashboardSale = { total?: number; saleDate?: string };
+  const [products, setProducts] = useState<DashboardProduct[]>([]);
+  const [recentSales, setRecentSales] = useState<DashboardSale[]>([]);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showMandatoryModal, setShowMandatoryModal] = useState(false);
@@ -49,7 +51,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const productsRes = await apiFetch('/api/products');
+        const productsRes = await apiFetch('/api/v1/products');
         if (productsRes.ok) {
           const productsData = await productsRes.json();
           setProducts(Array.isArray(productsData) ? productsData : []);
@@ -60,13 +62,13 @@ export default function HomePage() {
         sevenDaysAgo.setDate(today.getDate() - 7);
         const from = sevenDaysAgo.toISOString().split('T')[0] + 'T00:00:00Z';
         const to = today.toISOString().split('T')[0] + 'T23:59:59Z';
-        const salesRes = await apiFetch(`/api/sales/report?from=${from}&to=${to}`);
+        const salesRes = await apiFetch(`/api/v1/sales/report?from=${from}&to=${to}`);
         if (salesRes.ok) {
           const salesData = await salesRes.json();
           setRecentSales(Array.isArray(salesData) ? salesData : []);
         }
 
-        const meRes = await apiFetch('/api/auth/me');
+        const meRes = await apiFetch('/api/v1/auth/me');
         if (meRes.ok) {
           const meData = await meRes.json();
           if (meData?.email) {
@@ -89,7 +91,7 @@ export default function HomePage() {
 
   const salesByDay: { [key: string]: number } = {};
   recentSales.forEach((sale) => {
-    const date = new Date(sale.saleDate).toLocaleDateString('es-MX');
+    const date = new Date(sale.saleDate ?? '').toLocaleDateString('es-MX');
     salesByDay[date] = (salesByDay[date] || 0) + (sale.total || 0);
   });
 

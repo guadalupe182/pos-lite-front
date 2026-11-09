@@ -63,7 +63,7 @@ export default function CheckoutButton({ items = [], onSuccess }: CheckoutButton
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch('/api/payments/create-preference', {
+      const response = await apiFetch('/api/v1/payments/create-preference', {
         method: 'POST',
         body: JSON.stringify({ items: safeItems, customerEmail, totalAmount }),
       });
@@ -106,7 +106,7 @@ export default function CheckoutButton({ items = [], onSuccess }: CheckoutButton
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch('/api/sales', {
+      const response = await apiFetch('/api/v1/sales', {
         method: 'POST',
         body: JSON.stringify({
           paymentMethod: 'CASH',
@@ -183,7 +183,7 @@ export default function CheckoutButton({ items = [], onSuccess }: CheckoutButton
               }}
               onSubmit={async () => {
                 try {
-                  const saleResponse = await apiFetch('/api/sales', {
+                  const saleResponse = await apiFetch('/api/v1/sales', {
                     method: 'POST',
                     body: JSON.stringify({
                       paymentMethod: 'MERCADO_PAGO',

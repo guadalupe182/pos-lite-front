@@ -40,7 +40,7 @@ export default function DashboardContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const productsRes = await apiFetch('/api/products');
+        const productsRes = await apiFetch('/api/v1/products');
         const productsData = await productsRes.json();
         setProducts(productsData);
 
@@ -49,11 +49,11 @@ export default function DashboardContent() {
         sevenDaysAgo.setDate(today.getDate() - 7);
         const from = sevenDaysAgo.toISOString().split('T')[0] + 'T00:00:00Z';
         const to = today.toISOString().split('T')[0] + 'T23:59:59Z';
-        const salesRes = await apiFetch(`/api/sales/report?from=${from}&to=${to}`);
+        const salesRes = await apiFetch(`/api/v1/sales/report?from=${from}&to=${to}`);
         const salesData = await salesRes.json();
         setRecentSales(salesData);
 
-        const meRes = await apiFetch('/api/auth/me');
+        const meRes = await apiFetch('/api/v1/auth/me');
         const meData = await meRes.json();
         setUserName(meData.email.split('@')[0]);
       } catch (error) {
