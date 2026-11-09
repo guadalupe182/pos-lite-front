@@ -159,7 +159,9 @@ export const FlagProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     useEffect(() => {
-        refresh();
+        queueMicrotask(() => {
+            refresh();
+        });
 
         const onStorage = () => refresh();
         const onLicenseUpdated = () => refresh();
