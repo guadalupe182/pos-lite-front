@@ -3,6 +3,8 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const isProd = process.env.NODE_ENV === "production";
 
+const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || process.env.POSLITE_API_ORIGIN || 'http://localhost:8080').replace(/\/$/, '');
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["*"],
   turbopack: {},
@@ -10,8 +12,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        // Ahora TODO va por Nginx, y Nginx decide qué mandar al 8090 y qué al 8087
-        destination: 'https://api.gdevsoftware.com/api/:path*', 
+        destination: `${apiOrigin}/api/:path*`,
       },
     ];
   },

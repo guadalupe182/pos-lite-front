@@ -150,7 +150,7 @@ export default function FitPage() {
     try {
       const payload = { ...form, clientName, planType };
       await apiFetch(
-        editingMembership ? `/api/memberships/${editingMembership.id}` : '/api/memberships',
+        editingMembership ? `/api/v1/memberships/${editingMembership.id}` : '/api/v1/memberships',
         {
           method: editingMembership ? 'PUT' : 'POST',
           body: JSON.stringify(payload),

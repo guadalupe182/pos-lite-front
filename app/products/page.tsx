@@ -41,8 +41,8 @@ export default function ProductsPage() {
     setLoading(true);
     try {
       const [productsRes, categoriesRes] = await Promise.all([
-        apiFetch("/api/products"),
-        apiFetch("/api/categories"),
+        apiFetch("/api/v1/products"),
+        apiFetch("/api/v1/categories"),
       ]);
       const productsData = await productsRes.json();
       const categoriesData = await categoriesRes.json();
@@ -124,7 +124,7 @@ export default function ProductsPage() {
           body: JSON.stringify(payload),
         });
       } else {
-        await apiFetch("/api/products", {
+        await apiFetch("/api/v1/products", {
           method: "POST",
           body: JSON.stringify(payload),
         });
