@@ -29,7 +29,7 @@ export default function InventoryPage() {
   const fetchInventory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/sales/inventory-report");
+      const res = await apiFetch("/api/v1/sales/inventory-report");
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
     } catch {
@@ -73,7 +73,7 @@ export default function InventoryPage() {
 
     setAdjustMessage(null);
     try {
-      const res = await apiFetch("/api/products/adjust-by-barcode", {
+      const res = await apiFetch("/api/v1/products/adjust-by-barcode", {
         method: "POST",
         body: JSON.stringify({ barcode: selectedBarcode, delta, reason: "MANUAL" }),
       });

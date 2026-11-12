@@ -156,7 +156,7 @@ export default function StylePage() {
         stock,
       };
       await apiFetch(
-        editingItem ? `/api/boutique-items/${editingItem.id}` : '/api/boutique-items',
+        editingItem ? `/api/v1/boutique-items/${editingItem.id}` : '/api/v1/boutique-items',
         {
           method: editingItem ? 'PUT' : 'POST',
           body: JSON.stringify(payload),
