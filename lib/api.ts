@@ -197,9 +197,13 @@ export async function getUnreadNotifications(): Promise<Notification[]> {
 }
 
 export async function markNotificationAsRead(id: number): Promise<void> {
-  return apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' }).then(res => res.json());
+  return apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' }).then(res =>
+    res.ok ? undefined : Promise.reject(res)
+  );
 }
 
 export async function deleteNotification(id: number): Promise<void> {
-  return apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res => res.json());
+  return apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res =>
+    res.ok ? undefined : Promise.reject(res)
+  );
 }
