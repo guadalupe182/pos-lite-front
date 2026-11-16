@@ -5,6 +5,12 @@ export function getApiUrl(endpoint: string): string {
   return `${API_BASE}${cleanEndpoint}`;
 }
 
+// Helper para parsear JSON de forma segura (204 No Content -> null)
+export async function parseJsonResponse<T>(response: Response): Promise<T | null> {
+  if (response.status === 204) return null;
+  return response.json() as Promise<T>;
+}
+
 // ==================== TIPOS ====================
 export interface CashSession {
   id: number;
@@ -145,37 +151,41 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
 
 // ==================== CAJA ====================
 export async function getDailySummary(): Promise<DailySummaryDto> {
-  return apiFetch('/api/cash/daily-summary', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/cash/daily-summary', { method: 'GET' }).then(res =>
+    parseJsonResponse<DailySummaryDto>(res)
+  ) as Promise<DailySummaryDto>;
 }
 
 export async function closeCash(finalCash: number): Promise<CashCloseReportDto> {
   return apiFetch('/api/cash/close', {
     method: 'POST',
     body: JSON.stringify({ finalCash }),
-  }).then(res => res.json());
+  }).then(res => parseJsonResponse<CashCloseReportDto>(res)) as Promise<CashCloseReportDto>;
 }
 
 export async function isCashClosedToday(): Promise<boolean> {
-  return apiFetch('/api/cash/is-closed', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/cash/is-closed', { method: 'GET' }).then(res =>
+    parseJsonResponse<boolean>(res)
+  ) as Promise<boolean>;
 }
 
 export async function openCash(initialCash: number): Promise<CashSession> {
   return apiFetch('/api/cash/open', {
     method: 'POST',
     body: JSON.stringify({ initialCash }),
-  }).then(res => res.json());
+  }).then(res => parseJsonResponse<CashSession>(res)) as Promise<CashSession>;
 }
 
 export async function getCurrentCashSession(): Promise<CurrentSessionDto | null> {
   return apiFetch('/api/cash/current-session', {
     method: 'GET',
-  }).then(res => res.json());
+  }).then(res => parseJsonResponse<CurrentSessionDto>(res)) as Promise<CurrentSessionDto | null>;
 }
 
 export async function isCashOpen(): Promise<boolean> {
   return apiFetch('/api/cash/is-open', {
     method: 'GET',
-  }).then(res => res.json());
+  }).then(res => parseJsonResponse<boolean>(res)) as Promise<boolean>;
 }
 
 // ==================== NOTIFICACIONES ====================
@@ -189,21 +199,29 @@ export interface Notification {
 }
 
 export async function getNotifications(): Promise<Notification[]> {
-  return apiFetch('/api/notifications', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/notifications', { method: 'GET' }).then(res =>
+    parseJsonResponse<Notification[]>(res)
+  ) as Promise<Notification[]>;
 }
 
 export async function getUnreadNotifications(): Promise<Notification[]> {
-  return apiFetch('/api/notifications/unread', { method: 'GET' }).then(res => res.json());
+  return apiFetch('/api/notifications/unread', { method: 'GET' }).then(res =>
+    parseJsonResponse<Notification[]>(res)
+  ) as Promise<Notification[]>;
 }
 
 export async function markNotificationAsRead(id: number): Promise<void> {
-  return apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' }).then(res =>
-    res.ok ? undefined : Promise.reject(res)
-  );
+  await apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' }).then(res => {
+    if (res.status === 204) return null;
+    if (!res.ok) throw res;
+    return res.json().catch(() => null);
+  });
 }
 
 export async function deleteNotification(id: number): Promise<void> {
-  return apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res =>
-    res.ok ? undefined : Promise.reject(res)
-  );
+  await apiFetch(`/api/notifications/${id}`, { method: 'DELETE' }).then(res => {
+    if (res.status === 204) return null;
+    if (!res.ok) throw res;
+    return res.json().catch(() => null);
+  });
 }
