@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
+import ErrorBanner from "@/components/ErrorBanner";
 import Navbar from "@/components/Navbar";
 
 type Product = {
@@ -191,9 +192,7 @@ export default function ProductsPage() {
           </div>
 
           {error && (
-              <div className="p-3.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-sm font-medium">
-                {error}
-              </div>
+              <ErrorBanner message={error} onClose={() => setError('')} />
           )}
 
           {/* Tabla de Productos */}

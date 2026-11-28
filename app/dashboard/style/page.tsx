@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import ErrorBanner from '@/components/ErrorBanner';
 import Toast from '@/components/Toast';
 
 type BoutiqueItem = {
@@ -239,9 +240,7 @@ export default function StylePage() {
         </section>
 
         {error && !showModal && (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm font-medium text-rose-700">
-            {error}
-          </div>
+          <ErrorBanner message={error} onClose={() => setError('')} />
         )}
 
         <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xs">

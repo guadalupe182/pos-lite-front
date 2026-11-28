@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '@/lib/api';
+import ErrorBanner from '@/components/ErrorBanner';
 import { persistLicenseFlags, clearLicenseFlags } from '@/contexts/FlagContext';
 
 const LICENSE_STORAGE_KEY = 'gdev_license_key';
@@ -239,9 +240,7 @@ export default function LicenseDashboardPage() {
             </form>
 
             {error && (
-                <div role="alert" className="mt-4 p-3.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold">
-                  {error}
-                </div>
+                <ErrorBanner message={error} onClose={() => setError('')} />
             )}
           </section>
 

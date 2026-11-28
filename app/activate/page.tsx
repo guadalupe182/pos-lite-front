@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { getApiUrl } from '@/lib/api';
+import ErrorBanner from '@/components/ErrorBanner';
 
 const LICENSE_ACTIVATION_URL = getApiUrl('/api/v1/licenses/activate');
 
@@ -115,9 +116,7 @@ export default function ActivatePage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
-                {error}
-              </div>
+              <ErrorBanner message={error} onClose={() => setError('')} />
             )}
 
             <div>
